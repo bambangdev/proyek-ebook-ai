@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Pembuat Ebook AI</title>
+    <!-- Google Fonts & Libraries -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
@@ -87,6 +88,7 @@
 </head>
 <body>
 
+    <!-- Container untuk Login/Daftar -->
     <div id="auth-view" class="fade-in">
         <div class="auth-container">
             <div class="auth-tabs">
@@ -118,6 +120,7 @@
         </div>
     </div>
 
+    <!-- Container Aplikasi Utama -->
     <div id="app-view" class="hidden">
         <div id="main-container" class="app-container">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
@@ -181,6 +184,7 @@
             </div>
         </div>
         
+        <!-- Area Admin -->
         <div id="admin-view" class="admin-container hidden">
              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h1 class="app-header" style="margin: 0;">Manajemen Lisensi</h1>
@@ -218,6 +222,7 @@
         </div>
     </div>
     
+    <!-- Modal Universal -->
     <div id="app-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -229,8 +234,10 @@
       </div>
     </div>
 
+    <!-- Toast Notification -->
     <div id="toast-notification">Pesan Toast!</div>
     
+    <!-- Firebase SDK -->
     <script type="module">
         const authStatus = document.getElementById('auth-status');
 
@@ -359,7 +366,6 @@
                 }
             });
             
-            // [FIX] Mengubah alur pendaftaran menjadi redirect ke WhatsApp
             registerForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 window.open('https://wa.link/u8668y', '_blank');
@@ -409,7 +415,7 @@
                 appView.classList.add('fade-in');
 
                 const tierInfo = TIER_CONFIG[currentUserData.tier] || { name: 'Unknown', quota: 0 };
-                const remainingQuota = tierInfo.quota - currentUserData.quotaUsed;
+                const remainingQuota = tierInfo.quota - (currentUserData.quotaUsed || 0);
                 
                 activeUserEmail.textContent = currentUserData.claimedByEmail;
                 activeUserTier.textContent = tierInfo.name;
@@ -544,16 +550,21 @@
                 }
             });
 
-            // [FIX] Logika diimplementasikan kembali
             function handleEditLicense(e) {
                 const licenseId = e.target.dataset.id;
                 const licenseData = allLicensesCache.find(lic => lic.id === licenseId);
                 if (!licenseData) return;
 
+                const tierOptions = Object.keys(TIER_CONFIG).map(key => 
+                    `<option value="${key}" ${licenseData.tier === key ? 'selected' : ''}>${TIER_CONFIG[key].name}</option>`
+                ).join('');
+
                 modalTitle.textContent = "Edit Lisensi";
                 modalBody.innerHTML = `
                     <p>Mengedit lisensi: <strong>${licenseId}</strong></p>
                     <form id="edit-license-modal-form" class="auth-form">
+                        <label>Paket Lisensi</label>
+                        <select id="edit-license-tier">${tierOptions}</select>
                         <label>Email Pengguna (kosongkan untuk membebaskan)</label>
                         <input type="email" id="edit-license-email" value="${licenseData.claimedByEmail || ''}" placeholder="Email pengguna baru...">
                         <label>Nama Pengguna</label>
@@ -566,25 +577,27 @@
                 appModal.style.display = 'flex';
 
                 document.getElementById('save-edit-license-btn').onclick = async () => {
+                    const newTier = document.getElementById('edit-license-tier').value;
                     const newEmail = document.getElementById('edit-license-email').value.trim().toLowerCase() || null;
                     const newName = document.getElementById('edit-license-name').value.trim() || null;
                     const newWhatsapp = document.getElementById('edit-license-whatsapp').value.trim() || null;
                     
                     const licenseRef = doc(db, "licenses", licenseId);
                     try {
-                        if (newEmail) {
+                        if (newEmail && newEmail !== licenseData.claimedByEmail) {
                             const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", newEmail));
                             const emailSnap = await getDocs(emailQuery);
-                            if (!emailSnap.empty && emailSnap.docs[0].id !== licenseId) {
+                            if (!emailSnap.empty) {
                                 throw new Error('Email tersebut sudah digunakan oleh lisensi lain.');
                             }
                         }
                         
                         await updateDoc(licenseRef, {
+                            tier: newTier,
                             claimedByEmail: newEmail,
                             claimedByName: newName,
                             claimedByWhatsapp: newWhatsapp,
-                            claimedAt: newEmail ? serverTimestamp() : null
+                            claimedAt: newEmail ? (licenseData.claimedAt || serverTimestamp()) : null
                         });
                         showToast('Lisensi berhasil diperbarui.', 'success');
                         appModal.style.display = 'none';
