@@ -183,7 +183,7 @@
             };
             
             // 2. KONFIGURASI GOOGLE AI API KEY
-            const googleAiApiKey = "AIzaSyCPQQovLjGPGQVeDFFsNhaHZu6j-pVHCUs";
+            const googleAiApiKey = "AIzaSyDwkouU7RGO3xJcHARuz9fQnEHVBAn3xm0";
 
             // Logika untuk memilih konfigurasi yang akan digunakan
             const firebaseConfig = (typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0)
@@ -196,7 +196,7 @@
             }
 
             // Validasi Konfigurasi Google AI
-            if (!googleAiApiKey || googleAiApiKey.startsWith("AIzaSyCPQQovLjGPGQVeDFFsNhaHZu6j-pVHCUs")) {
+            if (!googleAiApiKey || googleAiApiKey.startsWith("AIzaSyDwkouU7RGO3xJcHARuz9fQnEHVBAn3xm0")) {
                  throw new Error("Kunci API Google AI belum diisi. Silakan edit file HTML dan isi variabel 'googleAiApiKey'.");
             }
             
