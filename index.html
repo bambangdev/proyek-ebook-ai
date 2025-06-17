@@ -468,26 +468,142 @@
                 document.getElementById('cancel-delete-btn').onclick = () => appModal.style.display = 'none';
             }
 
-            async function callGenerateApi(prompt) { /* ...Fungsi ini tetap sama... */ }
-            function addTopicToQueue() { /* ...Fungsi ini tetap sama... */ }
-            function renderQueueTable() { /* ...Fungsi ini tetap sama... */ }
-            async function processQueue() { /* ...Fungsi ini tetap sama... */ }
-            function updateItemStatus(id, status) { /* ...Fungsi ini tetap sama... */ }
-            function parseOutline(text) { /* ...Fungsi ini tetap sama... */ }
-            function renderEbookToHtml(title, ebookData) { /* ...Fungsi ini tetap sama... */ }
-            function generateFallbackEbook(topic, errorMessage) { /* ...Fungsi ini tetap sama... */ }
-            function showEbookInModal(item) { /* ...Fungsi ini tetap sama... */ }
-            function showToast(message, type = 'success') { /* ...Fungsi ini tetap sama... */ }
+            async function callGenerateApi(prompt) { 
+                try {
+                    const result = await generateEbookContent({ prompt });
+                    return result.data;
+                } catch (error) {
+                    console.error("Error memanggil Cloud Function:", error);
+                    throw new Error(`Gagal menghubungi server: ${error.message}`);
+                }
+             }
+
+            function addTopicToQueue() {
+                const topic = topicInput.value.trim();
+                if (!topic) {
+                    showToast('Topik tidak boleh kosong.', 'error');
+                    return;
+                }
+                ebookQueue.push({ id: Date.now(), topic, style: styleSelect.value, persona: personaSelect.value, status: 'Menunggu', htmlContent: null });
+                topicInput.value = '';
+                renderQueueTable();
+            }
+
+            function renderQueueTable() {
+                processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
+                queueTableBody.innerHTML = ebookQueue.map(item => `
+                    <tr>
+                        <td>${item.topic}</td>
+                        <td>${item.style}</td>
+                        <td>${item.persona}</td>
+                        <td>${item.status}</td>
+                        <td>
+                            ${item.status === 'Selesai' ? `<button class="btn view-result-btn" data-id="${item.id}" style="font-size: 0.8rem; padding: 4px 8px; background-color: var(--green-color);">Lihat</button>` : ''}
+                            ${item.status.includes('Gagal') ? `<button class="btn view-result-btn" data-id="${item.id}" style="font-size: 0.8rem; padding: 4px 8px; background-color: var(--red-color);">Error</button>` : ''}
+                        </td>
+                    </tr>`).join('');
+                document.querySelectorAll('.view-result-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        const item = ebookQueue.find(q => q.id === parseInt(e.currentTarget.dataset.id));
+                        if (item) showEbookInModal(item);
+                    };
+                });
+            }
+
+            async function processQueue() { 
+                isProcessing = true;
+                renderQueueTable();
+                for (const item of ebookQueue) {
+                    if (item.status === 'Menunggu') {
+                        try {
+                            const remainingQuota = (TIER_CONFIG[currentUserData.tier]?.quota || 0) - currentUserData.quotaUsed;
+                            if(remainingQuota <= 0) {
+                                showToast('Kuota Anda habis.', 'error');
+                                throw new Error("Kuota habis");
+                            }
+                            updateItemStatus(item.id, 'Membuat kerangka...');
+                            const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${item.topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n...`;
+                            const outlineResult = await callGenerateApi(promptOutline);
+                            const { title, chapters } = parseOutline(outlineResult.text);
+                            let ebookData = [];
+                            for (let i = 0; i < chapters.length; i++) {
+                                updateItemStatus(item.id, `Menulis Bab ${i + 1}/${chapters.length}...`);
+                                const contentPrompt = `Anda adalah seorang penulis dengan persona sebagai ${item.persona}. Tulis konten untuk bab buku berjudul "${chapters[i]}" dari ebook bertopik "${item.topic}". Gunakan gaya bahasa ${item.style}. Panjang sekitar 400-500 kata.`;
+                                const contentResult = await callGenerateApi(contentPrompt);
+                                ebookData.push({ title: chapters[i], content: contentResult.text });
+                            }
+                            item.htmlContent = renderEbookToHtml(title, ebookData);
+                            await updateDoc(doc(db, "licenses", currentUserData.id), { quotaUsed: increment(1) });
+                            currentUserData.quotaUsed++;
+                            updateItemStatus(item.id, 'Selesai');
+                            updateUI();
+                        } catch (error) {
+                            console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
+                            item.htmlContent = generateFallbackEbook(item.topic, error.message);
+                            updateItemStatus(item.id, `Gagal`);
+                        }
+                    }
+                }
+                isProcessing = false;
+                renderQueueTable();
+                showToast(`Proses antrean selesai!`, 'success');
+            }
+            
+            function updateItemStatus(id, status) {
+                const item = ebookQueue.find(q => q.id === id);
+                if (item) item.status = status;
+                renderQueueTable();
+            }
+
+            function parseOutline(text) { 
+                if (!text || typeof text !== 'string') throw new Error("Respons AI tidak valid.");
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                let title = "Judul Ebook";
+                const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
+                if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
+                const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
+                if (chapters.length === 0) throw new Error("Gagal membuat outline bab dari respons AI.");
+                return { title, chapters };
+            }
+            
+            function renderEbookToHtml(title, ebookData) { 
+                let html = `<h1 class="ebook-title">${title}</h1>`;
+                ebookData.forEach((chapter, index) => {
+                    html += `<div class="ebook-chapter"><h2>Bab ${index + 1}: ${chapter.title}</h2><p>${chapter.content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p></div>`;
+                });
+                return html;
+            }
+            
+            function generateFallbackEbook(topic, errorMessage) { return `<h1>Gagal Membuat Ebook: ${topic}</h1><p><b>Detail Kesalahan:</b> ${errorMessage}</p>`; }
+
+            function showEbookInModal(item) { 
+                modalTitle.textContent = item.status.includes('Gagal') ? "Detail Kegagalan" : `Ebook: ${item.topic}`;
+                modalBody.innerHTML = `<div id="modal-ebook-content">${item.htmlContent}</div>`;
+                modalFooter.innerHTML = `<button id="modal-save-docx-btn" class="btn" style="background-color: var(--orange-color);"><i data-lucide="file-text"></i><span>Simpan .docx</span></button><button id="modal-save-pdf-btn" class="btn" style="background-color: var(--green-color);"><i data-lucide="download"></i><span>Simpan PDF</span></button>`;
+                lucide.createIcons();
+                document.getElementById('modal-save-pdf-btn').onclick = () => { html2pdf().from(document.getElementById('modal-ebook-content')).save(`${item.topic}.pdf`); };
+                document.getElementById('modal-save-docx-btn').onclick = () => { saveAs(htmlDocx.asBlob(`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${item.htmlContent}</body></html>`), `${item.topic}.docx`); };
+                appModal.style.display = 'flex';
+            }
+
+            function showToast(message, type = 'success') {
+                toastNotification.textContent = message;
+                toastNotification.className = 'show ' + type;
+                setTimeout(() => { toastNotification.className = toastNotification.className.replace('show', ''); }, 3000);
+            }
 
             async function init() {
                 showView('loading-view');
                 authStatus.textContent = 'Memeriksa status login...';
                 if (isProcessingSignInLink) { await handleSignInLink(); }
+                // Pasang event listener utama di sini, setelah semua elemen didefinisikan
+                addToQueueBtn.addEventListener('click', addTopicToQueue);
+                processQueueBtn.addEventListener('click', processQueue);
+                modalCloseBtn.addEventListener('click', () => appModal.style.display = 'none');
+                window.addEventListener('click', (event) => { if (event.target == appModal) appModal.style.display = 'none'; });
+                
                 lucide.createIcons();
             }
-            
-            modalCloseBtn.addEventListener('click', () => appModal.style.display = 'none');
-            window.addEventListener('click', (event) => { if (event.target == appModal) appModal.style.display = 'none'; });
             
             init();
 
