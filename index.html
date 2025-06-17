@@ -176,7 +176,7 @@
                 authDomain: "ebook-generator-11e92.firebaseapp.com",
                 databaseURL: "https://ebook-generator-11e92-default-rtdb.asia-southeast1.firebasedatabase.app",
                 projectId: "ebook-generator-11e92",
-                storageBucket: "ebook-generator-11e92.appspot.com",
+                storageBucket: "ebook-generator-11e92.firebasestorage.app",
                 messagingSenderId: "892611289187",
                 appId: "1:892611289187:web:e094185ed5873f409f1856",
                 measurementId: "G-799ZLZNTK4"
@@ -190,13 +190,13 @@
                 ? JSON.parse(__firebase_config)
                 : manualFirebaseConfig;
             
-            // Validasi konfigurasi Firebase
-            if (!firebaseConfig || firebaseConfig.apiKey.startsWith("AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX")) {
+            // [FIX] Validasi yang benar untuk konfigurasi Firebase
+            if (!firebaseConfig || firebaseConfig.apiKey === "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX-w") {
                 throw new Error("Konfigurasi Firebase belum diisi. Silakan edit file HTML dan isi bagian 'manualFirebaseConfig'.");
             }
 
-            // Validasi Konfigurasi Google AI
-            if (!googleAiApiKey || googleAiApiKey.startsWith("AIzaSyDwkouU7RGO3xJcHARuz9fQnEHVBAn3xm0")) {
+            // [FIX] Validasi yang benar untuk Konfigurasi Google AI
+            if (!googleAiApiKey || googleAiApiKey === "AIzaSyDwkouU7RGO3xJcHARuz9fQnEHVBAn3xm0") {
                  throw new Error("Kunci API Google AI belum diisi. Silakan edit file HTML dan isi variabel 'googleAiApiKey'.");
             }
             
@@ -360,9 +360,7 @@
             
             // --- LOGIKA APLIKASI UTAMA ---
             
-            // Fungsi pemanggilan API diperbarui untuk menggunakan googleAiApiKey
             async function callApiViaProxy(payload) {
-                // [FIX] Menggunakan konstanta googleAiApiKey yang sudah didefinisikan di atas.
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleAiApiKey}`;
                 const response = await fetch(apiUrl, {
                     method: 'POST',
