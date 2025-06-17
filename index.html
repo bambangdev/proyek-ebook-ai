@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Pembuat Ebook AI</title>
-    <!-- Google Fonts & Libraries (sama seperti sebelumnya) -->
+    <!-- Google Fonts & Libraries -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" xintegrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -33,6 +33,8 @@
         .btn-green:hover { background-color: #15803d; }
         .btn-orange { background-color: #f97316; }
         .btn-orange:hover { background-color: #ea580c; }
+        .btn-red { background-color: #ef4444; }
+        .btn-red:hover { background-color: #dc2626; }
         .btn-full { width: 100%; }
         .btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
         .table-container { overflow-x: auto; margin-top: 1rem; }
@@ -49,7 +51,8 @@
         .ebook-chapter-content { font-family: 'Lora', serif; font-size: 1.1rem; line-height: 1.7; text-align: justify; }
         .ebook-chapter-content p { margin-bottom: 1rem; }
         .ebook-chapter-content p:last-child { margin-bottom: 0; }
-        .spinner { border: 2px solid rgba(0, 0, 0, 0.1); width: 16px; height: 16px; border-radius: 50%; border-left-color: #09f; animation: spin 1s ease infinite; display: inline-block; }
+        .spinner, .btn-spinner { border: 2px solid rgba(255, 255, 255, 0.3); width: 16px; height: 16px; border-radius: 50%; border-left-color: #fff; animation: spin 1s ease infinite; display: inline-block; }
+        .status-cell .spinner { border-color: rgba(0,0,0,0.1); border-left-color: #09f; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         .modal-content { background-color: #fefefe; padding: 20px; border-radius: 0.5rem; width: 90%; max-width: 900px; }
@@ -60,6 +63,7 @@
         .close-button { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
         .close-button:hover, .close-button:focus { color: black; text-decoration: none; }
         .hidden { display: none !important; }
+        .user-info { font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; text-align: left; word-break: break-all;}
     </style>
 </head>
 <body>
@@ -68,19 +72,26 @@
     <div id="license-view">
         <div class="auth-container">
             <h2 class="app-header">Verifikasi Lisensi</h2>
+            <p id="auth-status" class="app-header" style="color:#3b82f6;">Menghubungkan ke layanan...</p>
             <form id="license-form" class="license-form">
-                <input type="text" id="license-code-input" placeholder="Masukkan Kode Lisensi Anda" required>
-                <button type="submit" class="btn btn-indigo btn-full">Verifikasi & Masuk</button>
+                <input type="text" id="license-code-input" placeholder="Masukkan Kode Lisensi Anda" required disabled>
+                <button type="submit" id="verify-btn" class="btn btn-indigo btn-full" disabled>
+                    <span id="verify-btn-text">Verifikasi & Masuk</span>
+                    <div id="verify-btn-spinner" class="btn-spinner hidden"></div>
+                </button>
             </form>
-             <p id="license-error" style="color: #ef4444; text-align: center; margin-top: 1rem; display: none;"></p>
+            <p id="license-error" style="color: #ef4444; text-align: center; margin-top: 1rem; display: none;"></p>
         </div>
     </div>
 
     <!-- Container Aplikasi Utama (tersembunyi) -->
     <div id="app-view" class="hidden">
         <div id="main-container" class="app-container">
-             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <p>Kode Lisensi Aktif</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                 <div class="user-info">
+                    <p>Kode Lisensi: <strong id="active-license-code"></strong></p>
+                    <p>User ID: <span id="user-id-display"></span></p>
+                </div>
                 <button id="logout-btn" class="btn btn-red" style="padding: 0.5rem 1rem;">Keluar</button>
             </div>
             <div class="app-header">
@@ -136,28 +147,50 @@
     <div id="ebook-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-             <h1 id="modal-title">Hasil</h1>
-             <span class="close-button">&times;</span>
+            <h1 id="modal-title">Hasil</h1>
+            <span class="close-button">&times;</span>
         </div>
         <div id="modal-body-content" class="modal-body"></div>
-         <div id="modal-footer-content" class="modal-footer"></div>
+        <div id="modal-footer-content" class="modal-footer"></div>
       </div>
     </div>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script>
-        lucide.createIcons();
+        // --- KONFIGURASI DAN INISIALISASI ---
 
-        // State aplikasi
+        // Konfigurasi Firebase akan diambil dari environment Canvas secara otomatis
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebook-generator-app';
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- State Aplikasi ---
         let ebookQueue = [];
         let isProcessing = false;
+        let currentUser = null;
+        let currentUserId = null;
 
-        // Elemen DOM
+        // --- Elemen DOM ---
         const licenseView = document.getElementById('license-view');
         const appView = document.getElementById('app-view');
         const licenseForm = document.getElementById('license-form');
         const licenseInput = document.getElementById('license-code-input');
         const licenseError = document.getElementById('license-error');
+        const authStatus = document.getElementById('auth-status');
+        const verifyBtn = document.getElementById('verify-btn');
+        const verifyBtnText = document.getElementById('verify-btn-text');
+        const verifyBtnSpinner = document.getElementById('verify-btn-spinner');
         const logoutBtn = document.getElementById('logout-btn');
+        const activeLicenseCode = document.getElementById('active-license-code');
+        const userIdDisplay = document.getElementById('user-id-display');
 
         const topicInput = document.getElementById('topic');
         const styleSelect = document.getElementById('style');
@@ -172,19 +205,85 @@
         const modalFooter = document.getElementById('modal-footer-content');
         const modalCloseBtn = document.querySelector('.close-button');
         
-        // --- LICENSE & AUTH LOGIC ---
-        async function validateLicense(code) {
+        // --- LOGIKA OTENTIKASI & LISENSI FIREBASE ---
+
+        // Listener status otentikasi
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Pengguna berhasil login (anonim atau dengan token)
+                currentUser = user;
+                currentUserId = user.uid;
+                authStatus.textContent = 'Terhubung. Siap memverifikasi.';
+                authStatus.style.color = '#16a34a';
+                licenseInput.disabled = false;
+                verifyBtn.disabled = false;
+
+                // Cek apakah ada lisensi tersimpan di local storage
+                const savedCode = localStorage.getItem('ebookAppLicenseCode');
+                if (savedCode) {
+                    setVerifyingState(true, 'Memverifikasi lisensi tersimpan...');
+                    const result = await validateAndClaimLicense(savedCode);
+                    handleVerificationResult(result, savedCode);
+                    setVerifyingState(false);
+                }
+            } else {
+                // Pengguna belum login
+                authStatus.textContent = 'Gagal terhubung. Coba refresh halaman.';
+                authStatus.style.color = '#ef4444';
+            }
+        });
+
+        // Proses login awal saat aplikasi dimuat
+        async function initializeAuth() {
             try {
-                const response = await fetch('/api/validate-license', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ licenseCode: code })
-                });
-                const data = await response.json();
-                return data.valid;
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
             } catch (error) {
-                console.error("Error validating license:", error);
-                return false;
+                console.error("Authentication failed:", error);
+                authStatus.textContent = `Error Otentikasi: ${error.message}`;
+                authStatus.style.color = '#ef4444';
+            }
+        }
+        
+        // Fungsi untuk mengklaim dan memvalidasi lisensi di Firestore
+        async function validateAndClaimLicense(code) {
+            if (!currentUserId) {
+                return { valid: false, message: 'ID Pengguna tidak ditemukan. Gagal validasi.' };
+            }
+
+            const licenseRef = doc(db, "licenses", code);
+            
+            try {
+                const licenseSnap = await getDoc(licenseRef);
+
+                if (!licenseSnap.exists()) {
+                    return { valid: false, message: 'Kode lisensi tidak ditemukan.' };
+                }
+
+                const licenseData = licenseSnap.data();
+
+                if (licenseData.claimedBy && licenseData.claimedBy !== currentUserId) {
+                    return { valid: false, message: 'Lisensi ini telah diklaim oleh pengguna lain.' };
+                }
+
+                if (!licenseData.claimedBy) {
+                    // Lisensi tersedia, klaim sekarang!
+                    await updateDoc(licenseRef, {
+                        claimedBy: currentUserId,
+                        claimedAt: serverTimestamp()
+                    });
+                     return { valid: true, message: 'Lisensi berhasil diklaim!' };
+                }
+
+                // Jika sudah diklaim oleh user ini, anggap valid
+                return { valid: true, message: 'Verifikasi lisensi berhasil.' };
+
+            } catch (error) {
+                console.error("Error validating license in Firestore:", error);
+                return { valid: false, message: 'Terjadi kesalahan saat validasi.' };
             }
         }
 
@@ -193,33 +292,61 @@
             const code = licenseInput.value.trim();
             if (!code) return;
 
-            const isValid = await validateLicense(code);
-            if (isValid) {
+            setVerifyingState(true, 'Memverifikasi...');
+            const result = await validateAndClaimLicense(code);
+            handleVerificationResult(result, code);
+            setVerifyingState(false);
+        });
+        
+        function handleVerificationResult(result, code) {
+             if (result.valid) {
                 localStorage.setItem('ebookAppLicenseCode', code);
-                showApp();
+                showApp(code);
             } else {
-                licenseError.textContent = 'Kode lisensi tidak valid atau sudah tidak berlaku.';
+                licenseError.textContent = result.message;
                 licenseError.style.display = 'block';
+                localStorage.removeItem('ebookAppLicenseCode');
             }
-        });
+        }
 
-        logoutBtn.addEventListener('click', () => {
+        logoutBtn.addEventListener('click', async () => {
             localStorage.removeItem('ebookAppLicenseCode');
+            await signOut(auth); // Sign out from Firebase
             showLicenseView();
+            // Lakukan re-login anonim agar pengguna bisa memasukkan lisensi lain
+            initializeAuth();
         });
+        
+        function setVerifyingState(isVerifying, text = 'Verifikasi & Masuk') {
+            verifyBtnText.textContent = text;
+            if (isVerifying) {
+                verifyBtn.disabled = true;
+                licenseInput.disabled = true;
+                verifyBtnSpinner.classList.remove('hidden');
+                licenseError.style.display = 'none';
+            } else {
+                 verifyBtn.disabled = false;
+                 licenseInput.disabled = false;
+                 verifyBtnSpinner.classList.add('hidden');
+                 verifyBtnText.textContent = 'Verifikasi & Masuk';
+            }
+        }
 
-        function showApp() {
+        function showApp(licenseCode) {
             licenseView.classList.add('hidden');
             appView.classList.remove('hidden');
+            activeLicenseCode.textContent = licenseCode;
+            userIdDisplay.textContent = currentUserId;
         }
 
         function showLicenseView() {
             appView.classList.add('hidden');
             licenseView.classList.remove('hidden');
+            licenseInput.value = '';
+            licenseError.style.display = 'none';
         }
         
-        // --- MAIN APP LOGIC ---
-        // (Sisa kode sama persis dengan versi sebelumnya, tidak perlu diubah)
+        // --- LOGIKA APLIKASI UTAMA (Sama seperti sebelumnya) ---
 
         function addTopicToQueue() {
             const topic = topicInput.value.trim();
@@ -231,7 +358,8 @@
                 topicInput.value = '';
                 renderQueueTable();
             } else {
-                alert('Topik tidak boleh kosong.');
+                // Mengganti alert dengan UI yang lebih baik
+                 showCustomAlert('Topik tidak boleh kosong.');
             }
         }
 
@@ -244,7 +372,7 @@
                     <td>${item.topic}</td>
                     <td>${item.style}</td>
                     <td>${item.persona}</td>
-                    <td class="status-cell">${item.status === 'Proses...' ? '<div class="spinner"></div>' : ''} ${item.status}</td>
+                    <td class="status-cell">${item.status === 'Proses...' ? '<div class="spinner status-spinner"></div>' : ''} ${item.status}</td>
                     <td class="action-cell">
                         ${(item.status === 'Selesai' || item.status === 'Gagal (Contoh Dibuat)') ? `<button class="btn btn-green view-result-btn" data-id="${item.id}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Lihat</button>` : ''}
                     </td>
@@ -260,11 +388,12 @@
                     }
                 });
             });
+            lucide.createIcons();
         }
         
         async function processQueue() {
             isProcessing = true;
-            processQueueBtn.disabled = true;
+            renderQueueTable();
 
             for (const item of ebookQueue) {
                 if (item.status === 'Menunggu') {
@@ -282,8 +411,16 @@
             }
             
             isProcessing = false;
-            processQueueBtn.disabled = ebookQueue.length === 0;
-            alert('Semua antrean telah selesai diproses!');
+            renderQueueTable();
+            showCustomAlert('Semua antrean telah selesai diproses!');
+        }
+        
+        function showCustomAlert(message) {
+            // Ini adalah pengganti sederhana untuk alert(). Anda bisa membuatnya lebih canggih.
+            modalTitle.textContent = "Informasi";
+            modalBody.innerHTML = `<p>${message}</p>`;
+            modalFooter.innerHTML = '';
+            ebookModal.style.display = 'flex';
         }
 
         function updateItemStatus(id, status) {
@@ -292,20 +429,19 @@
             renderQueueTable();
         }
 
-        async function callApi(apiUrl, payload) {
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    apiUrl: apiUrl,
-                    userPayload: payload
-                })
-            });
-            if (!response.ok) {
-                const errorBody = await response.text();
-                throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
-            }
-            return response.json();
+        async function callApiViaProxy(payload) {
+             const apiKey = ""; // Dibiarkan kosong, akan dihandle oleh Canvas
+             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+             const response = await fetch(apiUrl, {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify(payload)
+             });
+             if (!response.ok) {
+                 const errorBody = await response.text();
+                 throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+             }
+             return response.json();
         }
         
         function parseOutline(text) {
@@ -361,17 +497,15 @@
         }
 
         async function generateEbook(topic, style, persona) {
-            const textModelUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-
             const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n**Bab 2:** [Judul Bab 2]\n**Bab 3:** [Judul Bab 3]\n**Bab 4:** [Judul Bab 4]\n**Bab 5:** [Judul Bab 5]`;
-            const outlineResult = await callApi(textModelUrl, { contents: [{ role: "user", parts: [{ text: promptOutline }] }] });
+            const outlineResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: promptOutline }] }] });
             const outlineText = outlineResult.candidates[0].content.parts[0].text;
             const { title, chapters } = parseOutline(outlineText);
             
             let ebookData = [];
             for (const chapterTitle of chapters) {
                 const contentPrompt = `Anda adalah seorang penulis dengan persona sebagai **${persona}**. Tulis konten yang bersih dan terformat dengan baik untuk sebuah bab buku berjudul "${chapterTitle}" dari ebook bertopik "${topic}". Gunakan gaya bahasa "${style}". Pastikan ada struktur paragraf yang jelas. Panjang tulisan sekitar 400-500 kata.`;
-                const contentResult = await callApi(textModelUrl, { contents: [{ role: "user", parts: [{ text: contentPrompt }] }] });
+                const contentResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: contentPrompt }] }] });
                 const chapterContent = contentResult.candidates[0].content.parts[0].text;
                 ebookData.push({ title: chapterTitle, content: chapterContent });
             }
@@ -394,7 +528,7 @@
 
         function showEbookInModal(htmlContent, isFallback) {
             modalTitle.textContent = isFallback ? "Contoh Ebook (Gagal Terhubung ke AI)" : "Hasil Ebook";
-            modalBody.innerHTML = `<div id="modal-ebook-content">${htmlContent}</div>`;
+            modalBody.innerHTML = `<div id="modal-ebook-content" class="ebook-container">${htmlContent}</div>`;
             
             modalFooter.innerHTML = `
                 <button id="modal-save-docx-btn" class="btn btn-orange">
@@ -414,24 +548,14 @@
             ebookModal.style.display = 'flex';
         }
         
-        // --- Initial Load ---
-        (async function init() {
-            const savedCode = localStorage.getItem('ebookAppLicenseCode');
-            if (savedCode) {
-                const isValid = await validateLicense(savedCode);
-                if (isValid) {
-                    showApp();
-                } else {
-                    localStorage.removeItem('ebookAppLicenseCode');
-                    showLicenseView();
-                }
-            } else {
-                showLicenseView();
-            }
-            renderQueueTable();
-        })();
+        // --- Inisialisasi dan Event Listeners Global ---
+        
+        // Panggil inisialisasi otentikasi saat script dimuat
+        initializeAuth();
+        renderQueueTable(); // Render tabel kosong di awal
+        lucide.createIcons();
 
-        // Event Listeners (yang perlu dideklarasikan setelah DOM ada)
+        // Event Listeners
         addToQueueBtn.addEventListener('click', addTopicToQueue);
         processQueueBtn.addEventListener('click', processQueue);
         modalCloseBtn.addEventListener('click', () => ebookModal.style.display = 'none');
