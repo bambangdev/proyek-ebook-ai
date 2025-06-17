@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" xintegrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -92,13 +92,11 @@
                 </form>
             </div>
             <div id="register-form-container" class="hidden">
-                <h2 class="app-header" style="margin-bottom: 1rem;">Daftar Akun Baru</h2>
+                <h2 class="app-header" style="margin-bottom: 1rem;">Order Lisensi via WhatsApp</h2>
                 <form id="register-form" class="auth-form">
-                    <input type="text" id="register-name" placeholder="Nama Lengkap" required>
-                    <input type="tel" id="register-whatsapp" placeholder="Nomor WhatsApp" required>
-                    <input type="email" id="register-email" placeholder="Email Anda" required>
-                    <button type="submit" id="register-btn" class="btn btn-indigo">
-                        <span>Daftar</span>
+                    <p style="text-align: center; color: #64748b;">Klik tombol di bawah untuk memesan kunci lisensi Anda langsung melalui WhatsApp.</p>
+                    <button type="submit" id="register-btn" class="btn btn-green">
+                        <span>Order via WhatsApp</span>
                         <div class="btn-spinner hidden"></div>
                     </button>
                 </form>
@@ -217,8 +215,6 @@
                 measurementId: "G-799ZLZNTK4"
             };
             const googleAiApiKey = "AIzaSyDwkouU7RGO3xJcHARuz9fQnEHVBAn3xm0";
-            // [PENTING] Ganti dengan URL Web App dari Google Apps Script Anda
-            const googleSheetScriptUrl = "https://script.google.com/macros/s/AKfycbyMSFDW25E--PD0riQt713AK2Re3SU_RhB4ssuMclXJplgE9qlXbY7-PIA2KMZokV7H/exec";
             
             const firebaseConfig = (typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0) ? JSON.parse(__firebase_config) : manualFirebaseConfig;
             
@@ -250,9 +246,6 @@
             const loginEmailInput = document.getElementById('login-email');
             const loginBtn = document.getElementById('login-btn');
             const registerForm = document.getElementById('register-form');
-            const registerNameInput = document.getElementById('register-name');
-            const registerWhatsappInput = document.getElementById('register-whatsapp');
-            const registerEmailInput = document.getElementById('register-email');
             const registerBtn = document.getElementById('register-btn');
             const authErrorMsg = document.getElementById('auth-error-msg');
             const logoutBtn = document.getElementById('logout-btn');
@@ -292,8 +285,6 @@
                     showRegisterBtn.classList.add('active');
                 }
              }
-
-            // [FIX] Event listener ditambahkan
             showLoginBtn.addEventListener('click', () => toggleAuthView('login'));
             showRegisterBtn.addEventListener('click', () => toggleAuthView('register'));
             
@@ -315,7 +306,7 @@
                 try {
                     const querySnapshot = await getDocs(q);
                     if (querySnapshot.empty) {
-                        authErrorMsg.textContent = 'Email tidak terdaftar. Silakan daftar terlebih dahulu.';
+                        authErrorMsg.textContent = 'Email tidak terdaftar atau lisensi belum diaktifkan.';
                     } else {
                         const doc = querySnapshot.docs[0];
                         localStorage.setItem('ebookAppUserEmail', email);
@@ -328,75 +319,13 @@
                 }
             });
 
-            registerForm.addEventListener('submit', async (e) => {
+            // [FIX] Perubahan logika pendaftaran
+            registerForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const name = registerNameInput.value.trim();
-                const whatsapp = registerWhatsappInput.value.trim();
-                const email = registerEmailInput.value.trim().toLowerCase();
-                if (!name || !whatsapp || !email) {
-                    authErrorMsg.textContent = 'Semua field wajib diisi.';
-                    return;
-                }
-                
-                setButtonLoading(registerBtn, true);
-                authErrorMsg.textContent = '';
-
-                try {
-                    // Validasi apakah email sudah terdaftar
-                    const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
-                    const emailSnap = await getDocs(emailQuery);
-                    if (!emailSnap.empty) {
-                        throw new Error('Email ini sudah terdaftar. Silakan masuk.');
-                    }
-                    
-                    // Kirim data ke Google Sheets
-                    await submitToGoogleSheet({ nama: name, whatsapp, email });
-
-                    // Simpan email ke local storage untuk login otomatis berikutnya
-                    localStorage.setItem('ebookAppUserEmail', email);
-                    
-                    // Tampilkan pesan sukses dan minta admin untuk memberikan lisensi
-                    authView.innerHTML = `
-                        <div class="auth-container" style="text-align: center;">
-                            <h2 class="app-header">Pendaftaran Berhasil!</h2>
-                            <p>Terima kasih telah mendaftar. Data Anda telah kami terima.</p>
-                            <p>Akun Anda akan segera diaktifkan oleh admin. Anda akan dapat masuk setelah lisensi diberikan.</p>
-                            <button id="back-to-login-btn" class="btn btn-indigo" style="margin-top: 1rem;">Kembali ke Halaman Login</button>
-                        </div>
-                    `;
-                    document.getElementById('back-to-login-btn').onclick = () => window.location.reload();
-
-                } catch (error) {
-                    console.error("Error registering:", error);
-                    authErrorMsg.textContent = error.message;
-                } finally {
-                    setButtonLoading(registerBtn, false);
-                }
+                const whatsappUrl = `https://wa.link/u8668y`;
+                window.open(whatsappUrl, '_blank');
             });
             
-            async function submitToGoogleSheet(data) {
-                if (!googleSheetScriptUrl || googleSheetScriptUrl.startsWith("GANTI_DENGAN")) {
-                    throw new Error("URL Google Apps Script belum dikonfigurasi.");
-                }
-
-                const response = await fetch(googleSheetScriptUrl, {
-                    method: 'POST',
-                    mode: 'cors',
-                    cache: 'no-cache',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    redirect: 'follow',
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-                if (result.result !== 'success') {
-                    throw new Error(result.message || "Gagal mengirim data ke spreadsheet.");
-                }
-                return result;
-            }
-
             logoutBtn.addEventListener('click', () => {
                 localStorage.removeItem('ebookAppUserEmail');
                 showAuthView();
@@ -523,7 +452,6 @@
                     const newEmail = document.getElementById('edit-license-email').value.trim().toLowerCase() || null;
                     const licenseRef = doc(db, "licenses", id);
                     try {
-                         // Cek apakah email baru sudah dipakai lisensi lain
                         if (newEmail) {
                             const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", newEmail));
                             const emailSnap = await getDocs(emailQuery);
