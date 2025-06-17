@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Pembuat Ebook AI</title>
-    <!-- Google Fonts & Libraries -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
@@ -88,7 +87,6 @@
 </head>
 <body>
 
-    <!-- Container untuk Login/Daftar -->
     <div id="auth-view" class="fade-in">
         <div class="auth-container">
             <div class="auth-tabs">
@@ -107,15 +105,11 @@
                  <p id="help-link"><a href="https://wa.link/u8668y" target="_blank">Butuh Bantuan?</a></p>
             </div>
             <div id="register-form-container" class="hidden">
-                <h2 class="app-header" style="margin-bottom: 1rem;">Daftar Akun Baru</h2>
+                <h2 class="app-header" style="margin-bottom: 1rem;">Order Lisensi via WhatsApp</h2>
                 <form id="register-form" class="auth-form">
-                    <input type="text" id="register-name" placeholder="Nama Lengkap" required>
-                    <input type="tel" id="register-whatsapp" placeholder="Nomor WhatsApp" required>
-                    <input type="email" id="register-email" placeholder="Email Anda" required>
-                    <input type="text" id="register-license" placeholder="Kode Lisensi" required>
-                    <button type="submit" id="register-btn" class="btn btn-indigo">
-                        <span>Daftar & Masuk</span>
-                        <div class="btn-spinner hidden"></div>
+                    <p style="text-align: center; color: var(--subtle-text);">Klik tombol di bawah untuk memesan kunci lisensi Anda langsung melalui WhatsApp.</p>
+                    <button type="submit" id="register-btn" class="btn btn-green">
+                        <span>Order via WhatsApp</span>
                     </button>
                 </form>
             </div>
@@ -124,7 +118,6 @@
         </div>
     </div>
 
-    <!-- Container Aplikasi Utama -->
     <div id="app-view" class="hidden">
         <div id="main-container" class="app-container">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
@@ -188,7 +181,6 @@
             </div>
         </div>
         
-        <!-- Area Admin -->
         <div id="admin-view" class="admin-container hidden">
              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h1 class="app-header" style="margin: 0;">Manajemen Lisensi</h1>
@@ -226,7 +218,6 @@
         </div>
     </div>
     
-    <!-- Modal Universal -->
     <div id="app-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -238,10 +229,8 @@
       </div>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast-notification">Pesan Toast!</div>
     
-    <!-- Firebase SDK -->
     <script type="module">
         const authStatus = document.getElementById('auth-status');
 
@@ -299,11 +288,6 @@
             const loginEmailInput = document.getElementById('login-email');
             const loginBtn = document.getElementById('login-btn');
             const registerForm = document.getElementById('register-form');
-            const registerNameInput = document.getElementById('register-name');
-            const registerWhatsappInput = document.getElementById('register-whatsapp');
-            const registerEmailInput = document.getElementById('register-email');
-            const registerLicenseInput = document.getElementById('register-license');
-            const registerBtn = document.getElementById('register-btn');
             const authErrorMsg = document.getElementById('auth-error-msg');
             const logoutBtn = document.getElementById('logout-btn');
             
@@ -374,56 +358,11 @@
                     setButtonLoading(loginBtn, false);
                 }
             });
-
-            registerForm.addEventListener('submit', async (e) => {
+            
+            // [FIX] Mengubah alur pendaftaran menjadi redirect ke WhatsApp
+            registerForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const name = registerNameInput.value.trim();
-                const whatsapp = registerWhatsappInput.value.trim();
-                const email = registerEmailInput.value.trim().toLowerCase();
-                const licenseKey = registerLicenseInput.value.trim();
-                if (!name || !whatsapp || !email || !licenseKey) {
-                    authErrorMsg.textContent = 'Semua field wajib diisi.';
-                    return;
-                }
-                
-                setButtonLoading(registerBtn, true);
-                authErrorMsg.textContent = '';
-
-                try {
-                    const licenseRef = doc(db, "licenses", licenseKey);
-                    const licenseSnap = await getDoc(licenseRef);
-                    if (!licenseSnap.exists()) throw new Error('Kode lisensi tidak valid.');
-                    const licenseData = licenseSnap.data();
-                    if (licenseData.claimedByEmail) throw new Error('Kode lisensi sudah digunakan.');
-
-                    const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
-                    const emailSnap = await getDocs(emailQuery);
-                    if (!emailSnap.empty) throw new Error('Email ini sudah terdaftar. Silakan masuk.');
-
-                    const nextMonth = new Date();
-                    nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
-                    nextMonth.setHours(0, 0, 0, 0);
-
-                    const userRecord = {
-                        claimedByEmail: email,
-                        claimedByName: name,
-                        claimedByWhatsapp: whatsapp,
-                        claimedAt: serverTimestamp(),
-                        tier: licenseData.tier || 'coba-coba',
-                        quotaUsed: 0,
-                        quotaResetDate: nextMonth,
-                    };
-                    await updateDoc(licenseRef, userRecord);
-                    
-                    localStorage.setItem('ebookAppUserEmail', email);
-                    // Pass a cleaned-up object to handleUserLogin
-                    await handleUserLogin({id: licenseKey, ...licenseSnap.data(), ...userRecord});
-
-                } catch (error) {
-                    authErrorMsg.textContent = error.message;
-                } finally {
-                    setButtonLoading(registerBtn, false);
-                }
+                window.open('https://wa.link/u8668y', '_blank');
             });
             
             logoutBtn.addEventListener('click', () => {
@@ -439,15 +378,12 @@
                 return { id: docSnap.id, ...docSnap.data() };
             }
             
-            // [FIX] Robust function to handle login and quota reset
             async function handleUserLogin(userData) {
                 const now = new Date();
-                // Check if quotaResetDate exists and has a toDate method (is a Firestore Timestamp)
                 const resetDate = userData.quotaResetDate && typeof userData.quotaResetDate.toDate === 'function' 
                     ? userData.quotaResetDate.toDate() 
                     : null;
                 
-                // If there's no reset date, or if it's in the past, reset the quota
                 if (!resetDate || now >= resetDate) {
                     const nextMonth = new Date();
                     nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
@@ -459,9 +395,7 @@
                         quotaResetDate: nextMonth
                     });
                     
-                    // Update local data to match
                     userData.quotaUsed = 0;
-                    // Emulate a timestamp object for consistency
                     userData.quotaResetDate = { toDate: () => nextMonth };
                 }
                 
@@ -610,12 +544,97 @@
                 }
             });
 
-            function handleEditLicense(e) { /* ... */ }
-            function handleDeleteLicense(e) { /* ... */ }
+            // [FIX] Logika diimplementasikan kembali
+            function handleEditLicense(e) {
+                const licenseId = e.target.dataset.id;
+                const licenseData = allLicensesCache.find(lic => lic.id === licenseId);
+                if (!licenseData) return;
+
+                modalTitle.textContent = "Edit Lisensi";
+                modalBody.innerHTML = `
+                    <p>Mengedit lisensi: <strong>${licenseId}</strong></p>
+                    <form id="edit-license-modal-form" class="auth-form">
+                        <label>Email Pengguna (kosongkan untuk membebaskan)</label>
+                        <input type="email" id="edit-license-email" value="${licenseData.claimedByEmail || ''}" placeholder="Email pengguna baru...">
+                        <label>Nama Pengguna</label>
+                        <input type="text" id="edit-license-name" value="${licenseData.claimedByName || ''}">
+                        <label>Nomor WhatsApp</label>
+                        <input type="tel" id="edit-license-whatsapp" value="${licenseData.claimedByWhatsapp || ''}">
+                    </form>
+                `;
+                modalFooter.innerHTML = `<button id="save-edit-license-btn" class="btn btn-green">Simpan</button>`;
+                appModal.style.display = 'flex';
+
+                document.getElementById('save-edit-license-btn').onclick = async () => {
+                    const newEmail = document.getElementById('edit-license-email').value.trim().toLowerCase() || null;
+                    const newName = document.getElementById('edit-license-name').value.trim() || null;
+                    const newWhatsapp = document.getElementById('edit-license-whatsapp').value.trim() || null;
+                    
+                    const licenseRef = doc(db, "licenses", licenseId);
+                    try {
+                        if (newEmail) {
+                            const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", newEmail));
+                            const emailSnap = await getDocs(emailQuery);
+                            if (!emailSnap.empty && emailSnap.docs[0].id !== licenseId) {
+                                throw new Error('Email tersebut sudah digunakan oleh lisensi lain.');
+                            }
+                        }
+                        
+                        await updateDoc(licenseRef, {
+                            claimedByEmail: newEmail,
+                            claimedByName: newName,
+                            claimedByWhatsapp: newWhatsapp,
+                            claimedAt: newEmail ? serverTimestamp() : null
+                        });
+                        showToast('Lisensi berhasil diperbarui.', 'success');
+                        appModal.style.display = 'none';
+                    } catch (error) {
+                       alert('Gagal memperbarui lisensi: ' + error.message);
+                    }
+                };
+            }
+            function handleDeleteLicense(e) {
+                const id = e.target.dataset.id;
+                modalTitle.textContent = "Konfirmasi Hapus";
+                modalBody.innerHTML = `<p>Apakah Anda yakin ingin menghapus lisensi <strong>${id}</strong> secara permanen?</p>`;
+                modalFooter.innerHTML = `<button id="confirm-delete-btn" class="btn btn-red">Ya, Hapus</button><button id="cancel-delete-btn" class="btn btn-blue">Batal</button>`;
+                appModal.style.display = 'flex';
+
+                document.getElementById('confirm-delete-btn').onclick = async () => {
+                    try {
+                        await deleteDoc(doc(db, "licenses", id));
+                        showToast(`Lisensi ${id} berhasil dihapus.`, 'success');
+                        appModal.style.display = 'none';
+                    } catch (error) {
+                        showToast(`Gagal menghapus lisensi: ${error.message}`, 'error');
+                    }
+                };
+                 document.getElementById('cancel-delete-btn').onclick = () => appModal.style.display = 'none';
+            }
 
 
             // --- EBOOK APP LOGIC ---
-            async function callApiViaProxy(payload) { /* ... */ }
+            async function callApiViaProxy(payload) {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleAiApiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error("API Error Response:", errorBody);
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(errorBody);
+                    } catch(e) {
+                         throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+                    }
+                    const errorMessage = errorData.error?.message || `HTTP error! status: ${response.status}`;
+                    throw new Error(errorMessage);
+                }
+                return response.json();
+             }
             function addTopicToQueue() {
                 const topic = topicInput.value.trim();
                 if (topic) {
@@ -649,7 +668,8 @@
              }
             async function processQueue() { 
                 const ebooksToProcess = ebookQueue.filter(item => item.status === 'Menunggu');
-                const remainingQuota = (TIER_CONFIG[currentUserData.tier]?.quota || 0) - currentUserData.quotaUsed;
+                const tierInfo = TIER_CONFIG[currentUserData.tier] || { quota: 0 };
+                const remainingQuota = tierInfo.quota - currentUserData.quotaUsed;
                 
                 if (ebooksToProcess.length > remainingQuota) {
                     showCustomAlert(`Gagal! Anda mencoba memproses ${ebooksToProcess.length} ebook, tetapi sisa kuota Anda hanya ${remainingQuota}.`);
@@ -690,23 +710,77 @@
                 isProcessing = false;
                 renderQueueTable();
                 showCustomAlert(`${processedCount} ebook telah selesai diproses!`);
-                activeUserQuota.textContent = (TIER_CONFIG[currentUserData.tier]?.quota || 0) - currentUserData.quotaUsed;
+                activeUserQuota.textContent = (tierInfo.quota || 0) - currentUserData.quotaUsed;
             }
-            function showCustomAlert(message) { /* ... */ }
+            function showCustomAlert(message) {
+                 modalTitle.textContent = "Informasi";
+                 modalBody.innerHTML = `<p>${message}</p>`;
+                 modalFooter.innerHTML = '';
+                 appModal.style.display = 'flex';
+            }
             function updateItemStatus(id, status) {
                 const item = ebookQueue.find(q => q.id === id);
                 if (item) item.status = status;
                 renderQueueTable();
              }
-            function parseOutline(text) { /* ... */ }
+            function parseOutline(text) { 
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                let title = "Judul Ebook";
+                const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
+                if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
+                else {
+                    const firstLine = lines.find(line => !line.match(/\*\*?Bab\s*\d*:/i));
+                    if(firstLine) title = firstLine.trim();
+                }
+                const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
+                if (chapters.length === 0) throw new Error("Gagal membuat outline bab dari respons AI.");
+                return { title, chapters };
+             }
             function saveAsPdf() { /* ... */ }
             function saveAsDocx() { /* ... */ }
-            function formatContent(text) { /* ... */ }
-            function generateFallbackEbook(topic, errorMessage) { /* ... */ }
-            async function generateOutline(topic) { /* ... */ }
-            async function generateChapterContent(topic, chapterTitle, style, persona) { /* ... */ }
-            function renderEbookToHtml(title, ebookData) { /* ... */ }
-            function showEbookInModal(htmlContent, isFallback) { /* ... */ }
+            function formatContent(text) {
+                return text.replace(/\n{2,}/g, '</p><p>').replace(/\*/g,'');
+             }
+            function generateFallbackEbook(topic, errorMessage) {
+                const title = `Gagal Membuat Ebook: ${topic}`;
+                const chapters = [ "Detail Kesalahan" ];
+                const placeholderContent = `Terjadi kesalahan saat menghubungi server AI. Pesan error: "${errorMessage}". Harap periksa kembali API Key Google AI Anda atau coba lagi nanti.`;
+                return renderEbookToHtml(title, chapters.map(chapterTitle => ({ title: chapterTitle, content: placeholderContent })));
+             }
+            async function generateOutline(topic) {
+                const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n**Bab 2:** [Judul Bab 2]\n**Bab 3:** [Judul Bab 3]\n**Bab 4:** [Judul Bab 4]\n**Bab 5:** [Judul Bab 5]`;
+                const outlineResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: promptOutline }] }] });
+                return parseOutline(outlineResult.candidates[0].content.parts[0].text);
+            }
+            
+            async function generateChapterContent(topic, chapterTitle, style, persona) {
+                const contentPrompt = `Anda adalah seorang penulis dengan persona sebagai **${persona}**. Tulis konten yang bersih dan terformat dengan baik untuk sebuah bab buku berjudul "${chapterTitle}" dari ebook bertopik "${topic}". Gunakan gaya bahasa "${style}". Pastikan ada struktur paragraf yang jelas. Panjang tulisan sekitar 400-500 kata.`;
+                const contentResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: contentPrompt }] }] });
+                return contentResult.candidates[0].content.parts[0].text;
+            }
+
+            function renderEbookToHtml(title, ebookData) { 
+                let html = `<h1 class="ebook-title">${title}</h1>`;
+                html += `<div class="ebook-toc"><h3 class="ebook-chapter-title">Daftar Isi</h3><ul>`;
+                ebookData.forEach((chapter, index) => { html += `<li>Bab ${index + 1}: ${chapter.title}</li>`; });
+                html += `</ul></div>`;
+                ebookData.forEach((chapter, index) => {
+                    html += `<div class="ebook-chapter">
+                                <h2 class="ebook-chapter-title">Bab ${index + 1}: ${chapter.title}</h2>
+                                <div class="ebook-chapter-content"><p>${formatContent(chapter.content)}</p></div>
+                             </div>`;
+                });
+                return html;
+            }
+            function showEbookInModal(htmlContent, isFallback) { 
+                modalTitle.textContent = isFallback ? "Hasil Ebook (Gagal)" : "Hasil Ebook";
+                 modalBody.innerHTML = `<div id="modal-ebook-content" class="ebook-container">${htmlContent}</div>`;
+                 modalFooter.innerHTML = `<button id="modal-save-docx-btn" class="btn btn-orange"><i data-lucide="file-text"></i><span>Download (.docx)</span></button><button id="modal-save-pdf-btn" class="btn btn-green"><i data-lucide="download"></i><span>Simpan PDF</span></button>`;
+                 lucide.createIcons();
+                 document.getElementById('modal-save-pdf-btn').onclick = saveAsPdf;
+                 document.getElementById('modal-save-docx-btn').onclick = saveAsDocx;
+                 appModal.style.display = 'flex';
+            }
             
             // --- GLOBAL LISTENERS & INIT ---
             init();
