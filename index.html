@@ -157,413 +157,371 @@
     
     <!-- Firebase SDK -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- KONFIGURASI DAN INISIALISASI ---
-
-        // Konfigurasi Firebase akan diambil dari environment Canvas secara otomatis
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebook-generator-app';
-
-        // Inisialisasi Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // --- State Aplikasi ---
-        let ebookQueue = [];
-        let isProcessing = false;
-        let currentUser = null;
-        let currentUserId = null;
-
-        // --- Elemen DOM ---
-        const licenseView = document.getElementById('license-view');
-        const appView = document.getElementById('app-view');
-        const licenseForm = document.getElementById('license-form');
-        const licenseInput = document.getElementById('license-code-input');
-        const licenseError = document.getElementById('license-error');
+        // --- Elemen DOM Awal (diperlukan untuk penanganan error) ---
         const authStatus = document.getElementById('auth-status');
+        const licenseInput = document.getElementById('license-code-input');
         const verifyBtn = document.getElementById('verify-btn');
-        const verifyBtnText = document.getElementById('verify-btn-text');
-        const verifyBtnSpinner = document.getElementById('verify-btn-spinner');
-        const logoutBtn = document.getElementById('logout-btn');
-        const activeLicenseCode = document.getElementById('active-license-code');
-        const userIdDisplay = document.getElementById('user-id-display');
 
-        const topicInput = document.getElementById('topic');
-        const styleSelect = document.getElementById('style');
-        const personaSelect = document.getElementById('persona');
-        const addToQueueBtn = document.getElementById('add-to-queue-btn');
-        const queueTableBody = document.getElementById('queue-table-body');
-        const emptyQueueMsg = document.getElementById('empty-queue-msg');
-        const processQueueBtn = document.getElementById('process-queue-btn');
-        const ebookModal = document.getElementById('ebook-modal');
-        const modalTitle = document.getElementById('modal-title');
-        const modalBody = document.getElementById('modal-body-content');
-        const modalFooter = document.getElementById('modal-footer-content');
-        const modalCloseBtn = document.querySelector('.close-button');
+        try {
+            // --- Impor Firebase ---
+            // Pisahkan impor agar lebih mudah dibaca
+            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+            const { getFirestore, doc, getDoc, updateDoc, serverTimestamp, setLogLevel } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
         
-        // --- LOGIKA OTENTIKASI & LISENSI FIREBASE ---
+            // --- KONFIGURASI DAN INISIALISASI ---
+            const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+            const firebaseConfig = JSON.parse(firebaseConfigString);
 
-        // Listener status otentikasi
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // Pengguna berhasil login (anonim atau dengan token)
-                currentUser = user;
-                currentUserId = user.uid;
-                authStatus.textContent = 'Terhubung. Siap memverifikasi.';
-                authStatus.style.color = '#16a34a';
-                licenseInput.disabled = false;
-                verifyBtn.disabled = false;
-
-                // Cek apakah ada lisensi tersimpan di local storage
-                const savedCode = localStorage.getItem('ebookAppLicenseCode');
-                if (savedCode) {
-                    setVerifyingState(true, 'Memverifikasi lisensi tersimpan...');
-                    const result = await validateAndClaimLicense(savedCode);
-                    handleVerificationResult(result, savedCode);
-                    setVerifyingState(false);
-                }
-            } else {
-                // Pengguna belum login
-                authStatus.textContent = 'Gagal terhubung. Coba refresh halaman.';
-                authStatus.style.color = '#ef4444';
+            // [FIX] Periksa apakah konfigurasi Firebase valid sebelum melanjutkan.
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                throw new Error("Konfigurasi Firebase tidak ditemukan atau tidak valid. Aplikasi tidak dapat dijalankan.");
             }
-        });
+            
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebook-generator-app';
 
-        // Proses login awal saat aplikasi dimuat
-        async function initializeAuth() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
+            // Inisialisasi Firebase
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            setLogLevel('debug'); // Aktifkan log untuk debugging
+
+            // --- State Aplikasi ---
+            let ebookQueue = [];
+            let isProcessing = false;
+            let currentUserId = null;
+
+            // --- Elemen DOM Lanjutan ---
+            const licenseView = document.getElementById('license-view');
+            const appView = document.getElementById('app-view');
+            const licenseForm = document.getElementById('license-form');
+            const licenseError = document.getElementById('license-error');
+            const verifyBtnText = document.getElementById('verify-btn-text');
+            const verifyBtnSpinner = document.getElementById('verify-btn-spinner');
+            const logoutBtn = document.getElementById('logout-btn');
+            const activeLicenseCode = document.getElementById('active-license-code');
+            const userIdDisplay = document.getElementById('user-id-display');
+            const topicInput = document.getElementById('topic');
+            const styleSelect = document.getElementById('style');
+            const personaSelect = document.getElementById('persona');
+            const addToQueueBtn = document.getElementById('add-to-queue-btn');
+            const queueTableBody = document.getElementById('queue-table-body');
+            const emptyQueueMsg = document.getElementById('empty-queue-msg');
+            const processQueueBtn = document.getElementById('process-queue-btn');
+            const ebookModal = document.getElementById('ebook-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body-content');
+            const modalFooter = document.getElementById('modal-footer-content');
+            const modalCloseBtn = document.querySelector('.close-button');
+            
+            // --- LOGIKA OTENTIKASI & LISENSI FIREBASE ---
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    authStatus.textContent = 'Terhubung. Siap memverifikasi.';
+                    authStatus.style.color = '#16a34a';
+                    licenseInput.disabled = false;
+                    verifyBtn.disabled = false;
+
+                    const savedCode = localStorage.getItem('ebookAppLicenseCode');
+                    if (savedCode) {
+                        setVerifyingState(true, 'Memverifikasi lisensi tersimpan...');
+                        const result = await validateAndClaimLicense(savedCode);
+                        handleVerificationResult(result, savedCode);
+                        setVerifyingState(false);
+                    }
                 } else {
-                    await signInAnonymously(auth);
+                    currentUserId = null;
+                    authStatus.textContent = 'Gagal terhubung. Coba refresh halaman.';
+                    authStatus.style.color = '#ef4444';
                 }
-            } catch (error) {
-                console.error("Authentication failed:", error);
-                authStatus.textContent = `Error Otentikasi: ${error.message}`;
+            });
+
+            async function initializeAuth() {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Authentication failed:", error);
+                    // [FIX] Pesan error lebih spesifik
+                    authStatus.textContent = `Gagal Otentikasi: ${error.message}. Periksa koneksi atau aturan keamanan Firebase.`;
+                    authStatus.style.color = '#ef4444';
+                }
+            }
+            
+            async function validateAndClaimLicense(code) {
+                if (!currentUserId) {
+                    return { valid: false, message: 'ID Pengguna tidak ditemukan. Gagal validasi.' };
+                }
+                const licenseRef = doc(db, "licenses", code);
+                try {
+                    const licenseSnap = await getDoc(licenseRef);
+                    if (!licenseSnap.exists()) {
+                        return { valid: false, message: 'Kode lisensi tidak ditemukan.' };
+                    }
+                    const licenseData = licenseSnap.data();
+                    if (licenseData.claimedBy && licenseData.claimedBy !== currentUserId) {
+                        return { valid: false, message: 'Lisensi ini telah diklaim oleh pengguna lain.' };
+                    }
+                    if (!licenseData.claimedBy) {
+                        await updateDoc(licenseRef, {
+                            claimedBy: currentUserId,
+                            claimedAt: serverTimestamp()
+                        });
+                        return { valid: true, message: 'Lisensi berhasil diklaim!' };
+                    }
+                    return { valid: true, message: 'Verifikasi lisensi berhasil.' };
+                } catch (error) {
+                    console.error("Error validating license in Firestore:", error);
+                    return { valid: false, message: `Terjadi kesalahan saat validasi: ${error.message}` };
+                }
+            }
+
+            licenseForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const code = licenseInput.value.trim();
+                if (!code) return;
+                setVerifyingState(true, 'Memverifikasi...');
+                const result = await validateAndClaimLicense(code);
+                handleVerificationResult(result, code);
+                setVerifyingState(false);
+            });
+            
+            function handleVerificationResult(result, code) {
+                if (result.valid) {
+                    localStorage.setItem('ebookAppLicenseCode', code);
+                    showApp(code);
+                } else {
+                    licenseError.textContent = result.message;
+                    licenseError.style.display = 'block';
+                    localStorage.removeItem('ebookAppLicenseCode');
+                }
+            }
+
+            logoutBtn.addEventListener('click', async () => {
+                localStorage.removeItem('ebookAppLicenseCode');
+                await signOut(auth);
+                showLicenseView();
+                initializeAuth();
+            });
+            
+            function setVerifyingState(isVerifying, text = 'Verifikasi & Masuk') {
+                verifyBtnText.textContent = text;
+                if (isVerifying) {
+                    verifyBtn.disabled = true;
+                    licenseInput.disabled = true;
+                    verifyBtnSpinner.classList.remove('hidden');
+                    licenseError.style.display = 'none';
+                } else {
+                    verifyBtn.disabled = false;
+                    licenseInput.disabled = false;
+                    verifyBtnSpinner.classList.add('hidden');
+                    verifyBtnText.textContent = 'Verifikasi & Masuk';
+                }
+            }
+
+            function showApp(licenseCode) {
+                licenseView.classList.add('hidden');
+                appView.classList.remove('hidden');
+                activeLicenseCode.textContent = licenseCode;
+                userIdDisplay.textContent = currentUserId;
+            }
+
+            function showLicenseView() {
+                appView.classList.add('hidden');
+                licenseView.classList.remove('hidden');
+                licenseInput.value = '';
+                licenseError.style.display = 'none';
+            }
+            
+            // --- LOGIKA APLIKASI UTAMA ---
+            function addTopicToQueue() {
+                const topic = topicInput.value.trim();
+                if (topic) {
+                    ebookQueue.push({ id: Date.now(), topic, style: styleSelect.value, persona: personaSelect.value, status: 'Menunggu', htmlContent: null });
+                    topicInput.value = '';
+                    renderQueueTable();
+                } else {
+                    showCustomAlert('Topik tidak boleh kosong.');
+                }
+            }
+
+            function renderQueueTable() {
+                emptyQueueMsg.style.display = ebookQueue.length === 0 ? 'block' : 'none';
+                processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
+                queueTableBody.innerHTML = ebookQueue.map(item => `
+                    <tr id="row-${item.id}">
+                        <td>${item.topic}</td>
+                        <td>${item.style}</td>
+                        <td>${item.persona}</td>
+                        <td class="status-cell">${item.status === 'Proses...' ? '<div class="spinner status-spinner"></div>' : ''} ${item.status}</td>
+                        <td class="action-cell">
+                            ${(item.status === 'Selesai' || item.status === 'Gagal (Contoh Dibuat)') ? `<button class="btn btn-green view-result-btn" data-id="${item.id}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Lihat</button>` : ''}
+                        </td>
+                    </tr>`).join('');
+                document.querySelectorAll('.view-result-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        const item = ebookQueue.find(q => q.id === parseInt(e.currentTarget.dataset.id));
+                        if (item) showEbookInModal(item.htmlContent, item.status.includes('Contoh'));
+                    };
+                });
+                lucide.createIcons();
+            }
+            
+            async function processQueue() {
+                isProcessing = true;
+                renderQueueTable();
+                for (const item of ebookQueue) {
+                    if (item.status === 'Menunggu') {
+                        updateItemStatus(item.id, 'Proses...');
+                        try {
+                            item.htmlContent = await generateEbook(item.topic, item.style, item.persona);
+                            updateItemStatus(item.id, 'Selesai');
+                        } catch (error) {
+                            console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
+                            item.htmlContent = generateFallbackEbook(item.topic);
+                            updateItemStatus(item.id, 'Gagal (Contoh Dibuat)');
+                        }
+                    }
+                }
+                isProcessing = false;
+                renderQueueTable();
+                showCustomAlert('Semua antrean telah selesai diproses!');
+            }
+            
+            function showCustomAlert(message) {
+                modalTitle.textContent = "Informasi";
+                modalBody.innerHTML = `<p>${message}</p>`;
+                modalFooter.innerHTML = '';
+                ebookModal.style.display = 'flex';
+            }
+
+            function updateItemStatus(id, status) {
+                const item = ebookQueue.find(q => q.id === id);
+                if (item) item.status = status;
+                renderQueueTable();
+            }
+
+            async function callApiViaProxy(payload) {
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+                }
+                return response.json();
+            }
+            
+            function parseOutline(text) {
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                let title = "Judul Ebook";
+                const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
+                if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
+                else {
+                    const firstLine = lines.find(line => !line.match(/\*\*?Bab\s*\d*:/i));
+                    if(firstLine) title = firstLine.trim();
+                }
+                const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
+                if (chapters.length === 0) throw new Error("Gagal membuat outline bab.");
+                return { title, chapters };
+            }
+
+            function saveAsPdf() {
+                const element = document.getElementById('modal-ebook-content');
+                const title = element.querySelector('.ebook-title')?.textContent || 'ebook';
+                const fileName = title.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
+                const opt = { margin: [0.5, 0.5, 0.5, 0.5], filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }, pagebreak: { mode: 'css', before: '.ebook-chapter' } };
+                html2pdf().set(opt).from(element).save();
+            }
+
+            function saveAsDocx() {
+                const element = document.getElementById('modal-ebook-content');
+                const title = element.querySelector('.ebook-title')?.textContent || 'ebook';
+                const fileName = title.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.docx';
+                const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${element.innerHTML}</body></html>`;
+                saveAs(htmlDocx.asBlob(content), fileName);
+            }
+            
+            function formatContent(text) {
+                return text.replace(/\n{2,}/g, '</p><p>').replace(/\*/g,'');
+            }
+            
+            function generateFallbackEbook(topic) {
+                const title = `Contoh Ebook: ${topic}`;
+                const chapters = [ "Pendahuluan", "Konsep Kunci", "Studi Kasus", "Tantangan dan Solusi", "Kesimpulan" ];
+                const placeholderContent = "Ini adalah konten contoh yang ditampilkan karena terjadi kegagalan saat menghubungi server AI. Seharusnya, di sini akan terisi teks yang relevan dengan judul bab di atas, menjelaskan konsep secara rinci. Namun, karena adanya kendala teknis, kami menampilkan teks pengganti ini untuk menunjukkan bagaimana struktur dan format ebook akan terlihat.";
+                return renderEbookToHtml(title, chapters.map(chapterTitle => ({ title: chapterTitle, content: placeholderContent })));
+            }
+
+            async function generateEbook(topic, style, persona) {
+                const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n**Bab 2:** [Judul Bab 2]\n**Bab 3:** [Judul Bab 3]\n**Bab 4:** [Judul Bab 4]\n**Bab 5:** [Judul Bab 5]`;
+                const outlineResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: promptOutline }] }] });
+                const { title, chapters } = parseOutline(outlineResult.candidates[0].content.parts[0].text);
+                
+                const ebookData = [];
+                for (const chapterTitle of chapters) {
+                    const contentPrompt = `Anda adalah seorang penulis dengan persona sebagai **${persona}**. Tulis konten yang bersih dan terformat dengan baik untuk sebuah bab buku berjudul "${chapterTitle}" dari ebook bertopik "${topic}". Gunakan gaya bahasa "${style}". Pastikan ada struktur paragraf yang jelas. Panjang tulisan sekitar 400-500 kata.`;
+                    const contentResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: contentPrompt }] }] });
+                    ebookData.push({ title: chapterTitle, content: contentResult.candidates[0].content.parts[0].text });
+                }
+                return renderEbookToHtml(title, ebookData);
+            }
+            
+            function renderEbookToHtml(title, ebookData) {
+                let html = `<h1 class="ebook-title">${title}</h1>`;
+                html += `<div class="ebook-toc"><h3 class="ebook-chapter-title">Daftar Isi</h3><ul>`;
+                ebookData.forEach((chapter, index) => { html += `<li>Bab ${index + 1}: ${chapter.title}</li>`; });
+                html += `</ul></div>`;
+                ebookData.forEach((chapter, index) => {
+                    html += `<div class="ebook-chapter">
+                                <h2 class="ebook-chapter-title">Bab ${index + 1}: ${chapter.title}</h2>
+                                <div class="ebook-chapter-content"><p>${formatContent(chapter.content)}</p></div>
+                             </div>`;
+                });
+                return html;
+            }
+
+            function showEbookInModal(htmlContent, isFallback) {
+                modalTitle.textContent = isFallback ? "Contoh Ebook (Gagal Terhubung ke AI)" : "Hasil Ebook";
+                modalBody.innerHTML = `<div id="modal-ebook-content" class="ebook-container">${htmlContent}</div>`;
+                modalFooter.innerHTML = `
+                    <button id="modal-save-docx-btn" class="btn btn-orange"><i data-lucide="file-text"></i><span>Download (.docx)</span></button>
+                    <button id="modal-save-pdf-btn" class="btn btn-green"><i data-lucide="download"></i><span>Simpan PDF</span></button>`;
+                lucide.createIcons();
+                document.getElementById('modal-save-pdf-btn').onclick = saveAsPdf;
+                document.getElementById('modal-save-docx-btn').onclick = saveAsDocx;
+                ebookModal.style.display = 'flex';
+            }
+            
+            // --- Inisialisasi dan Event Listeners Global ---
+            initializeAuth();
+            renderQueueTable();
+            lucide.createIcons();
+            addToQueueBtn.addEventListener('click', addTopicToQueue);
+            processQueueBtn.addEventListener('click', processQueue);
+            modalCloseBtn.addEventListener('click', () => ebookModal.style.display = 'none');
+            window.addEventListener('click', (event) => {
+                if (event.target == ebookModal) ebookModal.style.display = 'none';
+            });
+
+        } catch (e) {
+            // [FIX] Tangkap semua error inisialisasi dan tampilkan di UI
+            console.error("Aplikasi gagal diinisialisasi:", e);
+            if (authStatus) {
+                authStatus.textContent = `ERROR KRITIKAL: ${e.message}`;
                 authStatus.style.color = '#ef4444';
             }
+            if(licenseInput) licenseInput.disabled = true;
+            if(verifyBtn) verifyBtn.disabled = true;
         }
-        
-        // Fungsi untuk mengklaim dan memvalidasi lisensi di Firestore
-        async function validateAndClaimLicense(code) {
-            if (!currentUserId) {
-                return { valid: false, message: 'ID Pengguna tidak ditemukan. Gagal validasi.' };
-            }
-
-            const licenseRef = doc(db, "licenses", code);
-            
-            try {
-                const licenseSnap = await getDoc(licenseRef);
-
-                if (!licenseSnap.exists()) {
-                    return { valid: false, message: 'Kode lisensi tidak ditemukan.' };
-                }
-
-                const licenseData = licenseSnap.data();
-
-                if (licenseData.claimedBy && licenseData.claimedBy !== currentUserId) {
-                    return { valid: false, message: 'Lisensi ini telah diklaim oleh pengguna lain.' };
-                }
-
-                if (!licenseData.claimedBy) {
-                    // Lisensi tersedia, klaim sekarang!
-                    await updateDoc(licenseRef, {
-                        claimedBy: currentUserId,
-                        claimedAt: serverTimestamp()
-                    });
-                     return { valid: true, message: 'Lisensi berhasil diklaim!' };
-                }
-
-                // Jika sudah diklaim oleh user ini, anggap valid
-                return { valid: true, message: 'Verifikasi lisensi berhasil.' };
-
-            } catch (error) {
-                console.error("Error validating license in Firestore:", error);
-                return { valid: false, message: 'Terjadi kesalahan saat validasi.' };
-            }
-        }
-
-        licenseForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const code = licenseInput.value.trim();
-            if (!code) return;
-
-            setVerifyingState(true, 'Memverifikasi...');
-            const result = await validateAndClaimLicense(code);
-            handleVerificationResult(result, code);
-            setVerifyingState(false);
-        });
-        
-        function handleVerificationResult(result, code) {
-             if (result.valid) {
-                localStorage.setItem('ebookAppLicenseCode', code);
-                showApp(code);
-            } else {
-                licenseError.textContent = result.message;
-                licenseError.style.display = 'block';
-                localStorage.removeItem('ebookAppLicenseCode');
-            }
-        }
-
-        logoutBtn.addEventListener('click', async () => {
-            localStorage.removeItem('ebookAppLicenseCode');
-            await signOut(auth); // Sign out from Firebase
-            showLicenseView();
-            // Lakukan re-login anonim agar pengguna bisa memasukkan lisensi lain
-            initializeAuth();
-        });
-        
-        function setVerifyingState(isVerifying, text = 'Verifikasi & Masuk') {
-            verifyBtnText.textContent = text;
-            if (isVerifying) {
-                verifyBtn.disabled = true;
-                licenseInput.disabled = true;
-                verifyBtnSpinner.classList.remove('hidden');
-                licenseError.style.display = 'none';
-            } else {
-                 verifyBtn.disabled = false;
-                 licenseInput.disabled = false;
-                 verifyBtnSpinner.classList.add('hidden');
-                 verifyBtnText.textContent = 'Verifikasi & Masuk';
-            }
-        }
-
-        function showApp(licenseCode) {
-            licenseView.classList.add('hidden');
-            appView.classList.remove('hidden');
-            activeLicenseCode.textContent = licenseCode;
-            userIdDisplay.textContent = currentUserId;
-        }
-
-        function showLicenseView() {
-            appView.classList.add('hidden');
-            licenseView.classList.remove('hidden');
-            licenseInput.value = '';
-            licenseError.style.display = 'none';
-        }
-        
-        // --- LOGIKA APLIKASI UTAMA (Sama seperti sebelumnya) ---
-
-        function addTopicToQueue() {
-            const topic = topicInput.value.trim();
-            const style = styleSelect.value;
-            const persona = personaSelect.value;
-            if (topic) {
-                const id = Date.now();
-                ebookQueue.push({ id, topic, style, persona, status: 'Menunggu', htmlContent: null });
-                topicInput.value = '';
-                renderQueueTable();
-            } else {
-                // Mengganti alert dengan UI yang lebih baik
-                 showCustomAlert('Topik tidak boleh kosong.');
-            }
-        }
-
-        function renderQueueTable() {
-            emptyQueueMsg.style.display = ebookQueue.length === 0 ? 'block' : 'none';
-            processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
-            
-            queueTableBody.innerHTML = ebookQueue.map(item => `
-                <tr id="row-${item.id}">
-                    <td>${item.topic}</td>
-                    <td>${item.style}</td>
-                    <td>${item.persona}</td>
-                    <td class="status-cell">${item.status === 'Proses...' ? '<div class="spinner status-spinner"></div>' : ''} ${item.status}</td>
-                    <td class="action-cell">
-                        ${(item.status === 'Selesai' || item.status === 'Gagal (Contoh Dibuat)') ? `<button class="btn btn-green view-result-btn" data-id="${item.id}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Lihat</button>` : ''}
-                    </td>
-                </tr>
-            `).join('');
-
-            document.querySelectorAll('.view-result-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = parseInt(e.currentTarget.dataset.id);
-                    const item = ebookQueue.find(q => q.id === id);
-                    if (item) {
-                        showEbookInModal(item.htmlContent, item.status.includes('Contoh'));
-                    }
-                });
-            });
-            lucide.createIcons();
-        }
-        
-        async function processQueue() {
-            isProcessing = true;
-            renderQueueTable();
-
-            for (const item of ebookQueue) {
-                if (item.status === 'Menunggu') {
-                    updateItemStatus(item.id, 'Proses...');
-                    try {
-                        const content = await generateEbook(item.topic, item.style, item.persona);
-                        item.htmlContent = content;
-                        updateItemStatus(item.id, 'Selesai');
-                    } catch (error) {
-                        console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
-                        item.htmlContent = generateFallbackEbook(item.topic);
-                        updateItemStatus(item.id, 'Gagal (Contoh Dibuat)');
-                    }
-                }
-            }
-            
-            isProcessing = false;
-            renderQueueTable();
-            showCustomAlert('Semua antrean telah selesai diproses!');
-        }
-        
-        function showCustomAlert(message) {
-            // Ini adalah pengganti sederhana untuk alert(). Anda bisa membuatnya lebih canggih.
-            modalTitle.textContent = "Informasi";
-            modalBody.innerHTML = `<p>${message}</p>`;
-            modalFooter.innerHTML = '';
-            ebookModal.style.display = 'flex';
-        }
-
-        function updateItemStatus(id, status) {
-            const item = ebookQueue.find(q => q.id === id);
-            if (item) item.status = status;
-            renderQueueTable();
-        }
-
-        async function callApiViaProxy(payload) {
-             const apiKey = ""; // Dibiarkan kosong, akan dihandle oleh Canvas
-             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-             const response = await fetch(apiUrl, {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify(payload)
-             });
-             if (!response.ok) {
-                 const errorBody = await response.text();
-                 throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
-             }
-             return response.json();
-        }
-        
-        function parseOutline(text) {
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            let title = "Judul Ebook";
-            const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
-            if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
-            else {
-                const firstLine = lines.find(line => !line.match(/\*\*?Bab\s*\d*:/i));
-                if(firstLine) title = firstLine.trim();
-            }
-
-            const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
-            if (chapters.length === 0) throw new Error("Gagal membuat outline bab.");
-            return { title, chapters };
-        }
-
-        function saveAsPdf() {
-            const element = document.getElementById('modal-ebook-content');
-            const ebookTitleElement = element.querySelector('.ebook-title');
-            let fileName = 'ebook.pdf';
-            if (ebookTitleElement && ebookTitleElement.textContent) {
-                fileName = ebookTitleElement.textContent.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
-            }
-            const opt = { margin: [0.5, 0.5, 0.5, 0.5], filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }, pagebreak: { mode: 'css', before: '.ebook-chapter' } };
-            html2pdf().set(opt).from(element).save();
-        }
-
-        function saveAsDocx() {
-            const element = document.getElementById('modal-ebook-content');
-            const ebookTitleElement = element.querySelector('.ebook-title');
-            let fileName = 'ebook.docx';
-            if (ebookTitleElement && ebookTitleElement.textContent) {
-                fileName = ebookTitleElement.textContent.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.docx';
-            }
-            const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${element.innerHTML}</body></html>`;
-            const converted = htmlDocx.asBlob(content);
-            saveAs(converted, fileName);
-        }
-        
-        function formatContent(text) {
-            const cleanedText = text.replace(/\n{2,}/g, '\n').replace(/\*/g,'');
-            const paragraphs = cleanedText.split('\n').map(p => p.trim()).filter(p => p.length > 0);
-            return paragraphs.map(p => `<p>${p}</p>`).join('');
-        }
-        
-        function generateFallbackEbook(topic) {
-            const title = `Contoh Ebook: ${topic}`;
-            const chapters = [ "Pendahuluan", "Konsep Kunci", "Studi Kasus", "Tantangan dan Solusi", "Kesimpulan" ];
-            const placeholderContent = "Ini adalah konten contoh yang ditampilkan karena terjadi kegagalan saat menghubungi server AI. Seharusnya, di sini akan terisi teks yang relevan dengan judul bab di atas, menjelaskan konsep secara rinci. Namun, karena adanya kendala teknis, kami menampilkan teks pengganti ini untuk menunjukkan bagaimana struktur dan format ebook akan terlihat.";
-            const ebookData = chapters.map(chapterTitle => ({ title: chapterTitle, content: placeholderContent }));
-            return renderEbookToHtml(title, ebookData);
-        }
-
-        async function generateEbook(topic, style, persona) {
-            const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n**Bab 2:** [Judul Bab 2]\n**Bab 3:** [Judul Bab 3]\n**Bab 4:** [Judul Bab 4]\n**Bab 5:** [Judul Bab 5]`;
-            const outlineResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: promptOutline }] }] });
-            const outlineText = outlineResult.candidates[0].content.parts[0].text;
-            const { title, chapters } = parseOutline(outlineText);
-            
-            let ebookData = [];
-            for (const chapterTitle of chapters) {
-                const contentPrompt = `Anda adalah seorang penulis dengan persona sebagai **${persona}**. Tulis konten yang bersih dan terformat dengan baik untuk sebuah bab buku berjudul "${chapterTitle}" dari ebook bertopik "${topic}". Gunakan gaya bahasa "${style}". Pastikan ada struktur paragraf yang jelas. Panjang tulisan sekitar 400-500 kata.`;
-                const contentResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: contentPrompt }] }] });
-                const chapterContent = contentResult.candidates[0].content.parts[0].text;
-                ebookData.push({ title: chapterTitle, content: chapterContent });
-            }
-            return renderEbookToHtml(title, ebookData);
-        }
-        
-        function renderEbookToHtml(title, ebookData) {
-            let html = `<h1 class="ebook-title">${title}</h1>`;
-            html += `<div class="ebook-toc"><h3 class="ebook-chapter-title">Daftar Isi</h3><ul>`;
-            ebookData.forEach((chapter, index) => { html += `<li>Bab ${index + 1}: ${chapter.title}</li>`; });
-            html += `</ul></div>`;
-            ebookData.forEach((chapter, index) => {
-                html += `<div class="ebook-chapter">
-                            <h2 class="ebook-chapter-title">Bab ${index + 1}: ${chapter.title}</h2>
-                            <div class="ebook-chapter-content">${formatContent(chapter.content)}</div>
-                         </div>`;
-            });
-            return html;
-        }
-
-        function showEbookInModal(htmlContent, isFallback) {
-            modalTitle.textContent = isFallback ? "Contoh Ebook (Gagal Terhubung ke AI)" : "Hasil Ebook";
-            modalBody.innerHTML = `<div id="modal-ebook-content" class="ebook-container">${htmlContent}</div>`;
-            
-            modalFooter.innerHTML = `
-                <button id="modal-save-docx-btn" class="btn btn-orange">
-                    <i data-lucide="file-text"></i>
-                    <span>Download (.docx)</span>
-                </button>
-                 <button id="modal-save-pdf-btn" class="btn btn-green">
-                    <i data-lucide="download"></i>
-                    <span>Simpan PDF</span>
-                </button>
-            `;
-            lucide.createIcons();
-            
-            document.getElementById('modal-save-pdf-btn').addEventListener('click', saveAsPdf);
-            document.getElementById('modal-save-docx-btn').addEventListener('click', saveAsDocx);
-
-            ebookModal.style.display = 'flex';
-        }
-        
-        // --- Inisialisasi dan Event Listeners Global ---
-        
-        // Panggil inisialisasi otentikasi saat script dimuat
-        initializeAuth();
-        renderQueueTable(); // Render tabel kosong di awal
-        lucide.createIcons();
-
-        // Event Listeners
-        addToQueueBtn.addEventListener('click', addTopicToQueue);
-        processQueueBtn.addEventListener('click', processQueue);
-        modalCloseBtn.addEventListener('click', () => ebookModal.style.display = 'none');
-        window.addEventListener('click', (event) => {
-            if (event.target == ebookModal) {
-                ebookModal.style.display = 'none';
-            }
-        });
     </script>
 </body>
 </html>
