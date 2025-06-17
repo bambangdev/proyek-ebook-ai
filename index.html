@@ -170,12 +170,11 @@
         
             // --- KONFIGURASI DAN INISIALISASI ---
 
-            // [FIX] SOLUSI: Sediakan tempat untuk konfigurasi manual saat deploy.
-            // Saat Anda men-deploy aplikasi ini di luar Canvas, ganti nilai-nilai di bawah ini
-            // dengan konfigurasi dari proyek Firebase Anda.
-            // Caranya: Buka Firebase Console > Project Settings > General > Your apps > Web app > SDK setup and configuration
+            // [PERBAIKAN] Mengembalikan ke placeholder yang jelas.
+            // GANTI NILAI-NILAI DI BAWAH INI dengan konfigurasi dari proyek Firebase Anda.
+            // Caranya: Buka Firebase Console > Project Settings (ikon roda gigi) > General > Your apps > Web app > SDK setup and configuration
             const manualFirebaseConfig = {
-                apiKey: "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX-w",
+                apiKey: "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX",
                 authDomain: "ebook-generator-11e92.firebaseapp.com",
                 projectId: "ebook-generator-11e92",
                 storageBucket: "ebook-generator-11e92.firebasestorage.app",
@@ -189,10 +188,10 @@
                 ? JSON.parse(__firebase_config)
                 : manualFirebaseConfig;
             
-            // Periksa apakah konfigurasi Firebase valid sebelum melanjutkan.
-            // Ini akan memeriksa apakah nilai placeholder sudah diganti.
-            if (!firebaseConfig || firebaseConfig.apiKey === "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX-w") {
-                throw new Error("Konfigurasi Firebase belum diisi. Silakan edit file HTML ini dan masukkan konfigurasi proyek Firebase Anda.");
+            // [PERBAIKAN] Logika validasi yang benar.
+            // Memeriksa apakah nilai apiKey masih berupa placeholder.
+            if (!firebaseConfig || firebaseConfig.apiKey === "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX") {
+                throw new Error("Konfigurasi Firebase belum diisi. Silakan edit file HTML dan isi bagian 'manualFirebaseConfig'.");
             }
             
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebook-generator-app';
@@ -201,7 +200,7 @@
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
-            setLogLevel('debug'); // Aktifkan log untuk debugging
+            setLogLevel('debug');
 
             // --- State Aplikasi ---
             let ebookQueue = [];
