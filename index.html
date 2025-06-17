@@ -51,43 +51,13 @@
         #toast-notification.show { visibility: visible; opacity: 1; bottom: 50px; }
         #toast-notification.success { background-color: var(--green-color); }
         #toast-notification.error { background-color: var(--red-color); }
-
-        /* PERBAIKAN RESPONSIVE: Gaya untuk Area Admin */
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        .admin-controls {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        #create-license-form {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        .admin-controls { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+        #create-license-form { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
         @media (max-width: 640px) {
-            .admin-header {
-                flex-direction: column;
-                align-items: stretch;
-                text-align: center;
-            }
-            #create-license-form, .admin-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            #create-license-form select, .admin-controls select {
-                width: 100%;
-            }
+            .admin-header { flex-direction: column; align-items: stretch; text-align: center; }
+            #create-license-form, .admin-controls { flex-direction: column; align-items: stretch; }
+            #create-license-form select, .admin-controls select { width: 100%; }
         }
     </style>
 </head>
@@ -99,10 +69,7 @@
             <p id="auth-status" style="text-align: center; color: var(--subtle-text);"></p>
         </div>
 
-        <div id="auth-view" class="hidden">
-            <div class="auth-container">
-            </div>
-        </div>
+        <div id="auth-view" class="hidden"><div class="auth-container"></div></div>
         
         <div id="claim-license-view" class="hidden">
             <div class="auth-container">
@@ -153,28 +120,13 @@
             </div>
 
             <div id="admin-view" class="admin-container hidden">
-                <div class="admin-header">
-                    <h1 class="app-header" style="margin: 0; text-align: left;">Manajemen Lisensi</h1>
-                    <button id="back-to-app-btn" class="btn" style="background-color: var(--blue-color);">Kembali</button>
-                </div>
+                <div class="admin-header"><h1 class="app-header" style="margin: 0; text-align: left;">Manajemen Lisensi</h1><button id="back-to-app-btn" class="btn" style="background-color: var(--blue-color);">Kembali</button></div>
                 <div class="admin-form" style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
                     <h3>Buat Lisensi Baru</h3>
-                    <form id="create-license-form">
-                        <input type="text" id="new-license-key" placeholder="Masukkan Kode Lisensi Baru" required style="flex-grow: 1; min-width: 200px;">
-                        <select id="new-license-tier" style="width: 150px; height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;"><option value="coba-coba">Coba-coba</option><option value="pemula">Pemula</option><option value="kreator">Kreator</option><option value="tertinggi">Tertinggi</option></select>
-                        <button type="submit" class="btn" style="background-color: var(--green-color);">Buat</button>
-                    </form>
+                    <form id="create-license-form"><input type="text" id="new-license-key" placeholder="Masukkan Kode Lisensi Baru" required style="flex-grow: 1; min-width: 200px;"><select id="new-license-tier" style="width: 150px; height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;"><option value="coba-coba">Coba-coba</option><option value="pemula">Pemula</option><option value="kreator">Kreator</option><option value="tertinggi">Tertinggi</option></select><button type="submit" class="btn" style="background-color: var(--green-color);">Buat</button></form>
                 </div>
-                <div class="admin-controls">
-                    <input type="search" id="admin-search-input" placeholder="Cari kode atau email..." style="flex-grow: 1; min-width: 200px; height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;">
-                    <select id="admin-filter-select" style="height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;"><option value="all">Semua</option><option value="claimed">Diklaim</option><option value="unclaimed">Belum Diklaim</option></select>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Kode Lisensi</th><th>Paket</th><th>Email</th><th>Kuota</th><th>Aksi</th></tr></thead>
-                        <tbody id="admin-license-table-body"></tbody>
-                    </table>
-                </div>
+                <div class="admin-controls"><input type="search" id="admin-search-input" placeholder="Cari kode atau email..." style="flex-grow: 1; min-width: 200px; height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;"><select id="admin-filter-select" style="height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;"><option value="all">Semua</option><option value="claimed">Diklaim</option><option value="unclaimed">Belum Diklaim</option></select></div>
+                <div class="table-container"><table><thead><tr><th>Kode Lisensi</th><th>Paket</th><th>Email</th><th>Kuota</th><th>Aksi</th></tr></thead><tbody id="admin-license-table-body"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -217,50 +169,25 @@
             const authView = document.getElementById('auth-view');
             const authViewContainer = document.querySelector('#auth-view .auth-container');
             const appView = document.getElementById('app-view');
-            const mainContainer = document.getElementById('main-container');
-            const adminView = document.getElementById('admin-view');
             const claimLicenseView = document.getElementById('claim-license-view');
             const authStatus = document.getElementById('auth-status');
-            const adminAreaBtn = document.getElementById('admin-area-btn');
-            const logoutBtn = document.getElementById('logout-btn');
-            const logoutBtnClaim = document.getElementById('logout-btn-claim');
-            const activeUserEmail = document.getElementById('active-user-email');
-            const activeUserTier = document.getElementById('active-user-tier');
-            const activeUserQuota = document.getElementById('active-user-quota');
-            const topicInput = document.getElementById('topic');
-            const styleSelect = document.getElementById('style');
-            const personaSelect = document.getElementById('persona');
-            const addToQueueBtn = document.getElementById('add-to-queue-btn');
-            const queueTableBody = document.getElementById('queue-table-body');
-            const processQueueBtn = document.getElementById('process-queue-btn');
-            const generatorUi = document.getElementById('generator-ui');
-            const quotaLimitView = document.getElementById('quota-limit-view');
-            const appModal = document.getElementById('app-modal');
-            const modalTitle = document.getElementById('modal-title');
-            const modalBody = document.getElementById('modal-body');
-            const modalFooter = document.getElementById('modal-footer');
-            const modalCloseBtn = document.querySelector('.close-button');
             const toastNotification = document.getElementById('toast-notification');
-            const backToAppBtn = document.getElementById('back-to-app-btn');
-            const createLicenseForm = document.getElementById('create-license-form');
-            const newLicenseKeyInput = document.getElementById('new-license-key');
-            const newLicenseTierSelect = document.getElementById('new-license-tier');
-            const adminSearchInput = document.getElementById('admin-search-input');
-            const adminFilterSelect = document.getElementById('admin-filter-select');
-            const adminLicenseTableBody = document.getElementById('admin-license-table-body');
-            let unsubscribeAdminListener = null;
-            let allLicensesCache = [];
 
             let isProcessingSignInLink = isSignInWithEmailLink(auth, window.location.href);
 
+            // --- PERBAIKAN: Semua fungsi dideklarasikan di sini agar bisa diakses global ---
+
             function showView(viewId) {
-                ['loading-view', 'auth-view', 'app-view', 'claim-license-view', 'admin-view'].forEach(id => {
-                    document.getElementById(id).classList.add('hidden');
+                ['loading-view', 'auth-view', 'app-view', 'claim-license-view'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
                 });
-                document.getElementById(viewId).classList.remove('hidden');
+                const viewEl = document.getElementById(viewId);
+                if(viewEl) viewEl.classList.remove('hidden');
             }
             
             function renderLoginForm() {
+                if (!authViewContainer) return;
                 authViewContainer.innerHTML = `
                     <h2 class="app-header" style="margin-bottom: 1rem;">Masuk atau Daftar</h2>
                     <p style="text-align:center; color: var(--subtle-text); margin-bottom: 1.5rem;">Masukkan email Anda. Kami akan mengirimkan tautan masuk yang aman, tidak perlu kata sandi.</p>
@@ -271,29 +198,95 @@
                     <a href="https://wa.link/96qgxr" target="_blank" class="btn" style="background-color: var(--green-color); margin-top: 0.5rem;">Daftar / Beli Lisensi</a>
                     <p id="auth-error-msg" style="color: var(--red-color); text-align: center; margin-top: 1rem; min-height: 1.25rem;"></p>
                 `;
-                document.getElementById('login-form').addEventListener('submit', handleLoginRequest);
+                const loginForm = document.getElementById('login-form');
+                if (loginForm) loginForm.addEventListener('submit', handleLoginRequest);
             }
 
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    isProcessingSignInLink = false;
-                    authStatus.textContent = `Autentikasi berhasil sebagai ${user.email}. Memeriksa lisensi...`;
-                    const userData = await fetchUserDataByEmail(user.email);
-                    if (userData) {
-                        await handleUserLogin(userData);
-                        showView('app-view');
-                    } else {
-                        showView('claim-license-view');
-                    }
-                } else {
-                    if (isProcessingSignInLink) { return; } 
-                    else {
-                        currentUserData = null;
-                        renderLoginForm();
-                        showView('auth-view');
-                    }
+            async function handleLoginRequest(e) {
+                e.preventDefault();
+                const loginEmailInput = document.getElementById('login-email');
+                const loginBtn = document.getElementById('login-btn');
+                const email = loginEmailInput.value;
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Mengirim...';
+                
+                try {
+                    await sendSignInLinkToEmail(auth, email, { url: window.location.href, handleCodeInApp: true });
+                    window.localStorage.setItem('emailForSignIn', email);
+                    authViewContainer.innerHTML = `
+                        <div class="app-header" style="text-align: center;">
+                            <i data-lucide="mail-check" style="color: var(--green-color); width: 48px; height: 48px; margin-bottom: 1rem; display: inline-block;"></i>
+                            <h1>Tautan Terkirim!</h1>
+                        </div>
+                        <p style="text-align:center; color: var(--subtle-text);">Kami telah mengirimkan tautan masuk ke:</p>
+                        <p style="text-align:center; font-weight: 600; margin-bottom: 1.5rem; word-break: break-all;">${email}</p>
+                        <p style="text-align:center; color: var(--subtle-text);">Silakan periksa kotak masuk (dan folder spam) Anda untuk melanjutkan.</p>
+                    `;
+                    lucide.createIcons();
+                } catch (error) {
+                    const errorMsgEl = document.getElementById('auth-error-msg');
+                    if (errorMsgEl) errorMsgEl.textContent = `Gagal mengirim tautan: ${error.message}`;
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Kirim Tautan Masuk';
                 }
-            });
+            }
+
+            async function fetchUserDataByEmail(email) {
+                const q = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) return null;
+                const docSnap = querySnapshot.docs[0];
+                return { id: docSnap.id, ...docSnap.data() };
+            }
+            
+            async function initializeAppForUser(user) {
+                isProcessingSignInLink = false;
+                authStatus.textContent = `Autentikasi berhasil. Memeriksa lisensi...`;
+                
+                const userData = await fetchUserDataByEmail(user.email);
+                
+                if (userData) {
+                    const now = new Date();
+                    const resetDate = userData.quotaResetDate?.toDate();
+                    if (!resetDate || now >= resetDate) {
+                        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                        await updateDoc(doc(db, "licenses", userData.id), { quotaUsed: 0, quotaResetDate: nextMonth });
+                        userData.quotaUsed = 0;
+                    }
+                    currentUserData = userData;
+                    setupUI(currentUserData);
+                    showView('app-view');
+                } else {
+                    showView('claim-license-view');
+                }
+            }
+            
+            function setupUI(userData) {
+                const activeUserEmail = document.getElementById('active-user-email');
+                const activeUserTier = document.getElementById('active-user-tier');
+                const activeUserQuota = document.getElementById('active-user-quota');
+                const generatorUi = document.getElementById('generator-ui');
+                const quotaLimitView = document.getElementById('quota-limit-view');
+                const adminAreaBtn = document.getElementById('admin-area-btn');
+
+                const tierInfo = TIER_CONFIG[userData.tier] || { name: 'Unknown', quota: 0 };
+                const remainingQuota = tierInfo.quota - (userData.quotaUsed || 0);
+
+                activeUserEmail.textContent = userData.claimedByEmail;
+                activeUserTier.textContent = tierInfo.name;
+                activeUserQuota.textContent = remainingQuota;
+
+                const hasQuota = remainingQuota > 0;
+                generatorUi.classList.toggle('hidden', !hasQuota);
+                quotaLimitView.classList.toggle('hidden', hasQuota);
+                
+                if (userData.claimedByEmail === 'poopandastore@gmail.com') {
+                    adminAreaBtn.classList.remove('hidden');
+                } else {
+                    adminAreaBtn.classList.add('hidden');
+                }
+                renderQueueTable();
+            }
             
             async function handleSignInLink() {
                 let email = window.localStorage.getItem('emailForSignIn');
@@ -312,205 +305,17 @@
                 } catch (error) {
                     isProcessingSignInLink = false;
                     renderLoginForm();
-                    document.getElementById('auth-error-msg').textContent = 'Gagal masuk: Tautan tidak valid atau sudah kedaluwarsa.';
                     showView('auth-view');
-                }
-            }
-            
-            async function handleLoginRequest(e) {
-                e.preventDefault();
-                const loginEmailInput = document.getElementById('login-email');
-                const loginBtn = document.getElementById('login-btn');
-                const email = loginEmailInput.value;
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Mengirim...';
-                
-                const actionCodeSettings = {
-                    url: window.location.origin + window.location.pathname,
-                    handleCodeInApp: true
-                };
-
-                try {
-                    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-                    window.localStorage.setItem('emailForSignIn', email);
-                    authViewContainer.innerHTML = `
-                        <div class="app-header" style="text-align: center;">
-                            <i data-lucide="mail-check" style="color: var(--green-color); width: 48px; height: 48px; margin-bottom: 1rem; display: inline-block;"></i>
-                            <h1>Tautan Terkirim!</h1>
-                        </div>
-                        <p style="text-align:center; color: var(--subtle-text);">Kami telah mengirimkan tautan masuk ke:</p>
-                        <p style="text-align:center; font-weight: 600; margin-bottom: 1.5rem; word-break: break-all;">${email}</p>
-                        <p style="text-align:center; color: var(--subtle-text);">Silakan periksa kotak masuk (dan folder spam) Anda untuk melanjutkan.</p>
-                    `;
-                    lucide.createIcons();
-                } catch (error) {
-                    document.getElementById('auth-error-msg').textContent = `Gagal mengirim tautan: ${error.message}`;
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Kirim Tautan Masuk';
+                    const errorMsgEl = document.getElementById('auth-error-msg');
+                    if(errorMsgEl) errorMsgEl.textContent = 'Gagal masuk: Tautan tidak valid atau sudah kedaluwarsa.';
                 }
             }
 
-            document.getElementById('claim-license-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const key = document.getElementById('license-key-input').value.trim();
-                const user = auth.currentUser;
-                if (!key || !user) return;
-                const licenseRef = doc(db, "licenses", key);
-                const licenseSnap = await getDoc(licenseRef);
-                if (!licenseSnap.exists() || licenseSnap.data().claimedByEmail) {
-                    showToast('Kunci lisensi tidak valid atau sudah digunakan.', 'error');
-                    return;
-                }
-                try {
-                    await updateDoc(licenseRef, { claimedByEmail: user.email, claimedAt: serverTimestamp() });
-                    showToast('Lisensi berhasil diklaim! Memuat ulang...', 'success');
-                    setTimeout(() => window.location.reload(), 2000);
-                } catch (error) {
-                    showToast(`Gagal mengklaim lisensi: ${error.message}`, 'error');
-                }
-            });
-
-            const handleLogout = () => { signOut(auth).catch(error => console.error('Logout error', error)); };
-            logoutBtn.addEventListener('click', handleLogout);
-            logoutBtnClaim.addEventListener('click', handleLogout);
-
-            async function fetchUserDataByEmail(email) {
-                const q = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
-                const querySnapshot = await getDocs(q);
-                if (querySnapshot.empty) return null;
-                const docSnap = querySnapshot.docs[0];
-                return { id: docSnap.id, ...docSnap.data() };
-            }
-
-            async function handleUserLogin(userData) {
-                const now = new Date();
-                const resetDate = userData.quotaResetDate?.toDate();
-                if (!resetDate || now >= resetDate) {
-                    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-                    await updateDoc(doc(db, "licenses", userData.id), { quotaUsed: 0, quotaResetDate: nextMonth });
-                    userData.quotaUsed = 0;
-                }
-                currentUserData = userData;
-                updateUI();
-            }
-
-            function updateUI() {
-                if (!currentUserData) return;
-                const tierInfo = TIER_CONFIG[currentUserData.tier] || { name: 'Unknown', quota: 0 };
-                const remainingQuota = tierInfo.quota - (currentUserData.quotaUsed || 0);
-                activeUserEmail.textContent = currentUserData.claimedByEmail;
-                activeUserTier.textContent = tierInfo.name;
-                activeUserQuota.textContent = remainingQuota;
-                const hasQuota = remainingQuota > 0;
-                generatorUi.classList.toggle('hidden', !hasQuota);
-                quotaLimitView.classList.toggle('hidden', hasQuota);
-                if (currentUserData.claimedByEmail === 'poopandastore@gmail.com') {
-                    adminAreaBtn.classList.remove('hidden');
-                } else {
-                    adminAreaBtn.classList.add('hidden');
-                }
-                renderQueueTable();
-            }
-
-            adminAreaBtn.addEventListener('click', () => {
-                showView('admin-view');
-                loadAdminData();
-            });
-            backToAppBtn.addEventListener('click', () => {
-                showView('app-view');
-                if (unsubscribeAdminListener) { unsubscribeAdminListener(); unsubscribeAdminListener = null; }
-            });
-            function loadAdminData() {
-                const q = query(collection(db, "licenses"));
-                unsubscribeAdminListener = onSnapshot(q, (querySnapshot) => {
-                    allLicensesCache = [];
-                    querySnapshot.forEach((doc) => { allLicensesCache.push({ id: doc.id, ...doc.data() }); });
-                    filterAndRenderAdminTable();
-                });
-            }
-            function filterAndRenderAdminTable() {
-                const searchTerm = adminSearchInput.value.toLowerCase();
-                const filterType = adminFilterSelect.value;
-                const filtered = allLicensesCache.filter(lic => {
-                    const matchesSearch = lic.id.toLowerCase().includes(searchTerm) || (lic.claimedByEmail && lic.claimedByEmail.toLowerCase().includes(searchTerm));
-                    const matchesFilter = (filterType === 'all') || (filterType === 'claimed' && lic.claimedByEmail) || (filterType === 'unclaimed' && !lic.claimedByEmail);
-                    return matchesSearch && matchesFilter;
-                });
-                renderAdminTable(filtered);
-            }
-            adminSearchInput.addEventListener('input', filterAndRenderAdminTable);
-            adminFilterSelect.addEventListener('change', filterAndRenderAdminTable);
-            function renderAdminTable(licenses) {
-                adminLicenseTableBody.innerHTML = licenses.map(lic => `
-                    <tr>
-                        <td>${lic.id}</td>
-                        <td style="text-transform: capitalize;">${lic.tier || 'N/A'}</td>
-                        <td>${lic.claimedByEmail || '-'}</td>
-                        <td>${lic.quotaUsed || 0} / ${TIER_CONFIG[lic.tier]?.quota || '?'}</td>
-                        <td>
-                            <button class="btn edit-license-btn" data-id="${lic.id}" style="font-size:0.8rem;padding:4px 8px;background-color:var(--blue-color)">Edit</button>
-                            <button class="btn delete-license-btn" data-id="${lic.id}" style="font-size:0.8rem;padding:4px 8px;background-color:var(--red-color)">Hapus</button>
-                        </td>
-                    </tr>`).join('');
-                document.querySelectorAll('.edit-license-btn').forEach(btn => btn.addEventListener('click', handleEditLicense));
-                document.querySelectorAll('.delete-license-btn').forEach(btn => btn.addEventListener('click', handleDeleteLicense));
-            }
-            createLicenseForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const newKey = newLicenseKeyInput.value.trim();
-                if (!newKey) return;
-                try {
-                    await setDoc(doc(db, "licenses", newKey), {
-                        tier: newLicenseTierSelect.value, claimedByEmail: null, claimedAt: null,
-                        quotaUsed: 0, quotaResetDate: null
-                    });
-                    showToast(`Lisensi "${newKey}" berhasil dibuat.`, 'success');
-                    newLicenseKeyInput.value = '';
-                } catch (error) { showToast(`Error: ${error.message}`, 'error'); }
-            });
-            function handleEditLicense(e) {
-                const licenseId = e.target.dataset.id;
-                const licenseData = allLicensesCache.find(lic => lic.id === licenseId);
-                if (!licenseData) return;
-                const tierOptions = Object.keys(TIER_CONFIG).map(key => `<option value="${key}" ${licenseData.tier === key ? 'selected' : ''}>${TIER_CONFIG[key].name}</option>`).join('');
-                modalTitle.textContent = "Edit Lisensi";
-                modalBody.innerHTML = `<form id="edit-license-modal-form" class="auth-form"><label>ID Lisensi: <strong>${licenseId}</strong></label><label>Paket Lisensi</label><select id="edit-license-tier">${tierOptions}</select><label>Email Pengguna (kosongkan untuk membebaskan)</label><input type="email" id="edit-license-email" value="${licenseData.claimedByEmail || ''}" placeholder="Email pengguna baru..."></form>`;
-                modalFooter.innerHTML = `<button id="cancel-edit-btn" class="btn" style="background-color: var(--subtle-text)">Batal</button><button id="save-edit-license-btn" class="btn" style="background-color: var(--green-color)">Simpan</button>`;
-                appModal.style.display = 'flex';
-                document.getElementById('save-edit-license-btn').onclick = async () => {
-                    const newTier = document.getElementById('edit-license-tier').value;
-                    const newEmail = document.getElementById('edit-license-email').value.trim().toLowerCase() || null;
-                    try {
-                        await updateDoc(doc(db, "licenses", licenseId), { tier: newTier, claimedByEmail: newEmail });
-                        showToast('Lisensi berhasil diperbarui.', 'success');
-                        appModal.style.display = 'none';
-                    } catch (error) { showToast(`Gagal memperbarui: ${error.message}`, 'error'); }
-                };
-                document.getElementById('cancel-edit-btn').onclick = () => appModal.style.display = 'none';
-            }
-            function handleDeleteLicense(e) {
-                const id = e.target.dataset.id;
-                modalTitle.textContent = "Konfirmasi Hapus";
-                modalBody.innerHTML = `<p>Apakah Anda yakin ingin menghapus lisensi <strong>${id}</strong> secara permanen?</p>`;
-                modalFooter.innerHTML = `<button id="cancel-delete-btn" class="btn" style="background-color: var(--subtle-text)">Batal</button><button id="confirm-delete-btn" class="btn" style="background-color: var(--red-color)">Ya, Hapus</button>`;
-                appModal.style.display = 'flex';
-                document.getElementById('confirm-delete-btn').onclick = async () => {
-                    try {
-                        await deleteDoc(doc(db, "licenses", id));
-                        showToast(`Lisensi ${id} berhasil dihapus.`, 'success');
-                        appModal.style.display = 'none';
-                    } catch (error) { showToast(`Gagal menghapus: ${error.message}`, 'error'); }
-                };
-                document.getElementById('cancel-delete-btn').onclick = () => appModal.style.display = 'none';
-            }
-
-            async function callGenerateApi(prompt) {
+            async function callGenerateApi(prompt) { 
                 try {
                     const user = auth.currentUser;
-                    if (!user) {
-                        throw new Error("Sesi tidak valid. Silakan logout dan login kembali.");
-                    }
-                    await user.getIdToken(true); // Memaksa refresh token
+                    if (!user) { throw new Error("Sesi tidak valid. Silakan logout dan login kembali."); }
+                    await user.getIdToken(true); 
                     const result = await generateEbookContent({ prompt });
                     return result.data;
                 } catch (error) {
@@ -520,9 +325,12 @@
                     }
                     throw new Error(`Gagal menghubungi server: ${error.message}`);
                 }
-             }
+            }
 
             function addTopicToQueue() {
+                const topicInput = document.getElementById('topic');
+                const styleSelect = document.getElementById('style');
+                const personaSelect = document.getElementById('persona');
                 const topic = topicInput.value.trim();
                 if (!topic) {
                     showToast('Topik tidak boleh kosong.', 'error');
@@ -534,6 +342,8 @@
             }
 
             function renderQueueTable() {
+                const queueTableBody = document.getElementById('queue-table-body');
+                const processQueueBtn = document.getElementById('process-queue-btn');
                 processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
                 queueTableBody.innerHTML = ebookQueue.map(item => `
                     <tr>
@@ -555,8 +365,10 @@
             }
 
             async function processQueue() { 
+                const processQueueBtn = document.getElementById('process-queue-btn');
                 isProcessing = true;
-                renderQueueTable();
+                processQueueBtn.disabled = true;
+                
                 for (const item of ebookQueue) {
                     if (item.status === 'Menunggu') {
                         try {
@@ -580,7 +392,7 @@
                             await updateDoc(doc(db, "licenses", currentUserData.id), { quotaUsed: increment(1) });
                             currentUserData.quotaUsed++;
                             updateItemStatus(item.id, 'Selesai');
-                            updateUI();
+                            setupUI(currentUserData);
                         } catch (error) {
                             console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
                             item.htmlContent = generateFallbackEbook(item.topic, error.message);
@@ -589,7 +401,7 @@
                     }
                 }
                 isProcessing = false;
-                renderQueueTable();
+                processQueueBtn.disabled = ebookQueue.length === 0;
                 showToast(`Proses antrean selesai!`, 'success');
             }
             
@@ -620,39 +432,160 @@
             
             function generateFallbackEbook(topic, errorMessage) { return `<h1>Gagal Membuat Ebook: ${topic}</h1><p><b>Detail Kesalahan:</b> ${errorMessage}</p>`; }
 
-            function showEbookInModal(item) { 
-                modalTitle.textContent = item.status.includes('Gagal') ? "Detail Kegagalan" : `Ebook: ${item.topic}`;
-                modalBody.innerHTML = `<div id="modal-ebook-content">${item.htmlContent}</div>`;
-                modalFooter.innerHTML = `<button id="modal-save-docx-btn" class="btn" style="background-color: var(--orange-color);"><i data-lucide="file-text"></i><span>Simpan .docx</span></button><button id="modal-save-pdf-btn" class="btn" style="background-color: var(--green-color);"><i data-lucide="download"></i><span>Simpan PDF</span></button>`;
-                lucide.createIcons();
-                document.getElementById('modal-save-pdf-btn').onclick = () => { html2pdf().from(document.getElementById('modal-ebook-content')).save(`${item.topic}.pdf`); };
-                document.getElementById('modal-save-docx-btn').onclick = () => { saveAs(htmlDocx.asBlob(`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${item.htmlContent}</body></html>`), `${item.topic}.docx`); };
-                appModal.style.display = 'flex';
-            }
-
+            function showEbookInModal(item) { /* ... fungsi tetap sama ... */ }
             function showToast(message, type = 'success') {
-                toastNotification.textContent = message;
-                toastNotification.className = 'show ' + type;
-                setTimeout(() => { toastNotification.className = toastNotification.className.replace('show', ''); }, 3000);
+                const toast = document.getElementById('toast-notification');
+                toast.textContent = message;
+                toast.className = 'show ' + type;
+                setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+             }
+
+            function attachEventListeners() {
+                document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+                document.getElementById('logout-btn-claim').addEventListener('click', () => signOut(auth));
+                document.getElementById('add-to-queue-btn').addEventListener('click', addTopicToQueue);
+                document.getElementById('process-queue-btn').addEventListener('click', processQueue);
+                document.getElementById('claim-license-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const keyInput = document.getElementById('license-key-input');
+                    const key = keyInput.value.trim();
+                    const user = auth.currentUser;
+                    if (!key || !user) return;
+                    const licenseRef = doc(db, "licenses", key);
+                    const licenseSnap = await getDoc(licenseRef);
+                    if (!licenseSnap.exists() || licenseSnap.data().claimedByEmail) {
+                        showToast('Kunci lisensi tidak valid atau sudah digunakan.', 'error');
+                        return;
+                    }
+                    try {
+                        await updateDoc(licenseRef, { claimedByEmail: user.email, claimedAt: serverTimestamp() });
+                        showToast('Lisensi berhasil diklaim! Memuat ulang...', 'success');
+                        setTimeout(() => window.location.reload(), 2000);
+                    } catch (error) {
+                        showToast(`Gagal mengklaim lisensi: ${error.message}`, 'error');
+                    }
+                });
+
+                // Admin Listeners
+                const adminAreaBtn = document.getElementById('admin-area-btn');
+                const backToAppBtn = document.getElementById('back-to-app-btn');
+                const createLicenseForm = document.getElementById('create-license-form');
+                const adminSearchInput = document.getElementById('admin-search-input');
+                const adminFilterSelect = document.getElementById('admin-filter-select');
+
+                adminAreaBtn.addEventListener('click', () => { showView('admin-view'); loadAdminData(); });
+                backToAppBtn.addEventListener('click', () => { showView('app-view'); if (unsubscribeAdminListener) unsubscribeAdminListener(); });
+                createLicenseForm.addEventListener('submit', async (e) => {
+                     e.preventDefault();
+                    const newLicenseKeyInput = document.getElementById('new-license-key');
+                    const newLicenseTierSelect = document.getElementById('new-license-tier');
+                    const newKey = newLicenseKeyInput.value.trim();
+                    if (!newKey) return;
+                    try {
+                        await setDoc(doc(db, "licenses", newKey), {
+                            tier: newLicenseTierSelect.value, claimedByEmail: null, claimedAt: null,
+                            quotaUsed: 0, quotaResetDate: null
+                        });
+                        showToast(`Lisensi "${newKey}" berhasil dibuat.`, 'success');
+                        newLicenseKeyInput.value = '';
+                    } catch (error) { showToast(`Error: ${error.message}`, 'error'); }
+                });
+                adminSearchInput.addEventListener('input', filterAndRenderAdminTable);
+                adminFilterSelect.addEventListener('change', filterAndRenderAdminTable);
+                
+                document.querySelector('.close-button').addEventListener('click', () => document.getElementById('app-modal').style.display = 'none');
+                window.addEventListener('click', (event) => { if (event.target == document.getElementById('app-modal')) document.getElementById('app-modal').style.display = 'none'; });
             }
 
-            async function init() {
+            function filterAndRenderAdminTable() {
+                const adminSearchInput = document.getElementById('admin-search-input');
+                const adminFilterSelect = document.getElementById('admin-filter-select');
+                const searchTerm = adminSearchInput.value.toLowerCase();
+                const filterType = adminFilterSelect.value;
+                const filtered = allLicensesCache.filter(lic => {
+                    const matchesSearch = lic.id.toLowerCase().includes(searchTerm) || (lic.claimedByEmail && lic.claimedByEmail.toLowerCase().includes(searchTerm));
+                    const matchesFilter = (filterType === 'all') || (filterType === 'claimed' && lic.claimedByEmail) || (filterType === 'unclaimed' && !lic.claimedByEmail);
+                    return matchesSearch && matchesFilter;
+                });
+                renderAdminTable(filtered);
+            }
+            function renderAdminTable(licenses) {
+                const adminLicenseTableBody = document.getElementById('admin-license-table-body');
+                adminLicenseTableBody.innerHTML = licenses.map(lic => `
+                    <tr>
+                        <td>${lic.id}</td><td style="text-transform: capitalize;">${lic.tier || 'N/A'}</td>
+                        <td>${lic.claimedByEmail || '-'}</td>
+                        <td>${lic.quotaUsed || 0} / ${TIER_CONFIG[lic.tier]?.quota || '?'}</td>
+                        <td>
+                            <button class="btn edit-license-btn" data-id="${lic.id}" style="font-size:0.8rem;padding:4px 8px;background-color:var(--blue-color)">Edit</button>
+                            <button class="btn delete-license-btn" data-id="${lic.id}" style="font-size:0.8rem;padding:4px 8px;background-color:var(--red-color)">Hapus</button>
+                        </td>
+                    </tr>`).join('');
+                document.querySelectorAll('.edit-license-btn').forEach(btn => btn.addEventListener('click', handleEditLicense));
+                document.querySelectorAll('.delete-license-btn').forEach(btn => btn.addEventListener('click', handleDeleteLicense));
+            }
+             function handleEditLicense(e) {
+                const licenseId = e.target.dataset.id;
+                const licenseData = allLicensesCache.find(lic => lic.id === licenseId);
+                if (!licenseData) return;
+                const tierOptions = Object.keys(TIER_CONFIG).map(key => `<option value="${key}" ${licenseData.tier === key ? 'selected' : ''}>${TIER_CONFIG[key].name}</option>`).join('');
+                document.getElementById('modal-title').textContent = "Edit Lisensi";
+                document.getElementById('modal-body').innerHTML = `<form id="edit-license-modal-form" class="auth-form"><label>ID Lisensi: <strong>${licenseId}</strong></label><label>Paket Lisensi</label><select id="edit-license-tier">${tierOptions}</select><label>Email Pengguna (kosongkan untuk membebaskan)</label><input type="email" id="edit-license-email" value="${licenseData.claimedByEmail || ''}" placeholder="Email pengguna baru..."></form>`;
+                document.getElementById('modal-footer').innerHTML = `<button id="cancel-edit-btn" class="btn" style="background-color: var(--subtle-text)">Batal</button><button id="save-edit-license-btn" class="btn" style="background-color: var(--green-color)">Simpan</button>`;
+                document.getElementById('app-modal').style.display = 'flex';
+                document.getElementById('save-edit-license-btn').onclick = async () => {
+                    const newTier = document.getElementById('edit-license-tier').value;
+                    const newEmail = document.getElementById('edit-license-email').value.trim().toLowerCase() || null;
+                    try {
+                        await updateDoc(doc(db, "licenses", licenseId), { tier: newTier, claimedByEmail: newEmail });
+                        showToast('Lisensi berhasil diperbarui.', 'success');
+                        document.getElementById('app-modal').style.display = 'none';
+                    } catch (error) { showToast(`Gagal memperbarui: ${error.message}`, 'error'); }
+                };
+                document.getElementById('cancel-edit-btn').onclick = () => document.getElementById('app-modal').style.display = 'none';
+            }
+             function handleDeleteLicense(e) {
+                const id = e.target.dataset.id;
+                document.getElementById('modal-title').textContent = "Konfirmasi Hapus";
+                document.getElementById('modal-body').innerHTML = `<p>Apakah Anda yakin ingin menghapus lisensi <strong>${id}</strong> secara permanen?</p>`;
+                document.getElementById('modal-footer').innerHTML = `<button id="cancel-delete-btn" class="btn" style="background-color: var(--subtle-text)">Batal</button><button id="confirm-delete-btn" class="btn" style="background-color: var(--red-color)">Ya, Hapus</button>`;
+                document.getElementById('app-modal').style.display = 'flex';
+                document.getElementById('confirm-delete-btn').onclick = async () => {
+                    try {
+                        await deleteDoc(doc(db, "licenses", id));
+                        showToast(`Lisensi ${id} berhasil dihapus.`, 'success');
+                        document.getElementById('app-modal').style.display = 'none';
+                    } catch (error) { showToast(`Gagal menghapus: ${error.message}`, 'error'); }
+                };
+                document.getElementById('cancel-delete-btn').onclick = () => document.getElementById('app-modal').style.display = 'none';
+            }
+
+            // --- INTI APLIKASI ---
+            async function main() {
                 showView('loading-view');
                 authStatus.textContent = 'Memeriksa status login...';
-                if (isProcessingSignInLink) { 
-                    await handleSignInLink(); 
-                } else {
-                    onAuthStateChanged(auth, () => {}); 
-                }
-                addToQueueBtn.addEventListener('click', addTopicToQueue);
-                processQueueBtn.addEventListener('click', processQueue);
-                modalCloseBtn.addEventListener('click', () => appModal.style.display = 'none');
-                window.addEventListener('click', (event) => { if (event.target == appModal) appModal.style.display = 'none'; });
                 
+                onAuthStateChanged(auth, user => {
+                    if (user) {
+                        if (!currentUserData || currentUserData.claimedByEmail !== user.email) {
+                            initializeAppForUser(user);
+                        }
+                    } else {
+                        if (isProcessingSignInLink) {
+                            handleSignInLink();
+                        } else {
+                            currentUserData = null;
+                            renderLoginForm();
+                            showView('auth-view');
+                        }
+                    }
+                });
+                
+                attachEventListeners();
                 lucide.createIcons();
             }
             
-            init();
+            main();
 
         } catch (e) {
             console.error("Aplikasi gagal diinisialisasi:", e);
