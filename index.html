@@ -170,34 +170,34 @@
         
             // --- KONFIGURASI DAN INISIALISASI ---
 
-            // [PERBAIKAN] Mengembalikan ke placeholder yang jelas.
-            // GANTI NILAI-NILAI DI BAWAH INI dengan konfigurasi dari proyek Firebase Anda.
-            // Caranya: Buka Firebase Console > Project Settings (ikon roda gigi) > General > Your apps > Web app > SDK setup and configuration
+            // 1. KONFIGURASI FIREBASE (isi jika deploy di luar Canvas)
             const manualFirebaseConfig = {
                 apiKey: "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX-w",
                 authDomain: "ebook-generator-11e92.firebaseapp.com",
                 databaseURL: "https://ebook-generator-11e92-default-rtdb.asia-southeast1.firebasedatabase.app",
                 projectId: "ebook-generator-11e92",
-                storageBucket: "ebook-generator-11e92.firebasestorage.app",
+                storageBucket: "ebook-generator-11e92.appspot.com",
                 messagingSenderId: "892611289187",
                 appId: "1:892611289187:web:e094185ed5873f409f1856",
                 measurementId: "G-799ZLZNTK4"
             };
-
-            // [PERBAIKAN] 2. KONFIGURASI GOOGLE AI API KEY
-            // Dapatkan dari https://aistudio.google.com/app/apikey
+            
+            // 2. KONFIGURASI GOOGLE AI API KEY
             const googleAiApiKey = "AIzaSyCPQQovLjGPGQVeDFFsNhaHZu6j-pVHCUs";
 
-            // Logika ini akan menggunakan konfigurasi dari Canvas jika tersedia,
-            // atau menggunakan konfigurasi manual di atas jika tidak.
+            // Logika untuk memilih konfigurasi yang akan digunakan
             const firebaseConfig = (typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0)
                 ? JSON.parse(__firebase_config)
                 : manualFirebaseConfig;
             
-            // [PERBAIKAN] Logika validasi yang benar.
-            // Memeriksa apakah nilai apiKey masih berupa placeholder.
-            if (!firebaseConfig || firebaseConfig.apiKey === "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX") {
+            // Validasi konfigurasi Firebase
+            if (!firebaseConfig || firebaseConfig.apiKey.startsWith("AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX")) {
                 throw new Error("Konfigurasi Firebase belum diisi. Silakan edit file HTML dan isi bagian 'manualFirebaseConfig'.");
+            }
+
+            // Validasi Konfigurasi Google AI
+            if (!googleAiApiKey || googleAiApiKey.startsWith("AIzaSyCPQQovLjGPGQVeDFFsNhaHZu6j-pVHCUs")) {
+                 throw new Error("Kunci API Google AI belum diisi. Silakan edit file HTML dan isi variabel 'googleAiApiKey'.");
             }
             
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebook-generator-app';
@@ -359,6 +359,31 @@
             }
             
             // --- LOGIKA APLIKASI UTAMA ---
+            
+            // Fungsi pemanggilan API diperbarui untuk menggunakan googleAiApiKey
+            async function callApiViaProxy(payload) {
+                // [FIX] Menggunakan konstanta googleAiApiKey yang sudah didefinisikan di atas.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleAiApiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error("API Error Response:", errorBody);
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(errorBody);
+                    } catch(e) {
+                         throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+                    }
+                    const errorMessage = errorData.error?.message || `HTTP error! status: ${response.status}`;
+                    throw new Error(errorMessage);
+                }
+                return response.json();
+            }
+
             function addTopicToQueue() {
                 const topic = topicInput.value.trim();
                 if (topic) {
@@ -380,13 +405,13 @@
                         <td>${item.persona}</td>
                         <td class="status-cell">${item.status === 'Proses...' ? '<div class="spinner status-spinner"></div>' : ''} ${item.status}</td>
                         <td class="action-cell">
-                            ${(item.status === 'Selesai' || item.status === 'Gagal (Contoh Dibuat)') ? `<button class="btn btn-green view-result-btn" data-id="${item.id}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Lihat</button>` : ''}
+                            ${(item.status === 'Selesai' || item.status.startsWith('Gagal')) ? `<button class="btn btn-green view-result-btn" data-id="${item.id}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Lihat</button>` : ''}
                         </td>
                     </tr>`).join('');
                 document.querySelectorAll('.view-result-btn').forEach(btn => {
                     btn.onclick = (e) => {
                         const item = ebookQueue.find(q => q.id === parseInt(e.currentTarget.dataset.id));
-                        if (item) showEbookInModal(item.htmlContent, item.status.includes('Contoh'));
+                        if (item) showEbookInModal(item.htmlContent, item.status.includes('Gagal'));
                     };
                 });
                 lucide.createIcons();
@@ -403,8 +428,8 @@
                             updateItemStatus(item.id, 'Selesai');
                         } catch (error) {
                             console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
-                            item.htmlContent = generateFallbackEbook(item.topic);
-                            updateItemStatus(item.id, 'Gagal (Contoh Dibuat)');
+                            item.htmlContent = generateFallbackEbook(item.topic, error.message);
+                            updateItemStatus(item.id, `Gagal (${error.message})`);
                         }
                     }
                 }
@@ -426,21 +451,6 @@
                 renderQueueTable();
             }
 
-            async function callApiViaProxy(payload) {
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) {
-                    const errorBody = await response.text();
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
-                }
-                return response.json();
-            }
-            
             function parseOutline(text) {
                 const lines = text.split('\n').filter(line => line.trim() !== '');
                 let title = "Judul Ebook";
@@ -451,7 +461,7 @@
                     if(firstLine) title = firstLine.trim();
                 }
                 const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
-                if (chapters.length === 0) throw new Error("Gagal membuat outline bab.");
+                if (chapters.length === 0) throw new Error("Gagal membuat outline bab dari respons AI.");
                 return { title, chapters };
             }
 
@@ -475,10 +485,10 @@
                 return text.replace(/\n{2,}/g, '</p><p>').replace(/\*/g,'');
             }
             
-            function generateFallbackEbook(topic) {
-                const title = `Contoh Ebook: ${topic}`;
-                const chapters = [ "Pendahuluan", "Konsep Kunci", "Studi Kasus", "Tantangan dan Solusi", "Kesimpulan" ];
-                const placeholderContent = "Ini adalah konten contoh yang ditampilkan karena terjadi kegagalan saat menghubungi server AI. Seharusnya, di sini akan terisi teks yang relevan dengan judul bab di atas, menjelaskan konsep secara rinci. Namun, karena adanya kendala teknis, kami menampilkan teks pengganti ini untuk menunjukkan bagaimana struktur dan format ebook akan terlihat.";
+            function generateFallbackEbook(topic, errorMessage) {
+                const title = `Gagal Membuat Ebook: ${topic}`;
+                const chapters = [ "Detail Kesalahan" ];
+                const placeholderContent = `Terjadi kesalahan saat menghubungi server AI. Pesan error: "${errorMessage}". Harap periksa kembali API Key Google AI Anda atau coba lagi nanti.`;
                 return renderEbookToHtml(title, chapters.map(chapterTitle => ({ title: chapterTitle, content: placeholderContent })));
             }
 
@@ -511,7 +521,7 @@
             }
 
             function showEbookInModal(htmlContent, isFallback) {
-                modalTitle.textContent = isFallback ? "Contoh Ebook (Gagal Terhubung ke AI)" : "Hasil Ebook";
+                modalTitle.textContent = isFallback ? "Hasil Ebook (Gagal)" : "Hasil Ebook";
                 modalBody.innerHTML = `<div id="modal-ebook-content" class="ebook-container">${htmlContent}</div>`;
                 modalFooter.innerHTML = `
                     <button id="modal-save-docx-btn" class="btn btn-orange"><i data-lucide="file-text"></i><span>Download (.docx)</span></button>
