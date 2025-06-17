@@ -31,10 +31,7 @@
         body { font-family: 'Inter', sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 1rem; box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         
         .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
-        .fade-out { animation: fadeOut 0.5s ease-in-out forwards; }
-        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
 
         .app-container, .auth-container, .admin-container { background-color: var(--card-bg); width: 100%; max-width: 64rem; margin-left: auto; margin-right: auto; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); transition: opacity 0.5s, transform 0.5s; }
         .auth-container { max-width: 28rem; }
@@ -48,12 +45,8 @@
         .app-header p { color: var(--subtle-text); margin-top: 0.5rem; }
         .form-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-bottom: 1.5rem; }
         @media (min-width: 1024px) { .form-grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
-        .form-grid-item { position: relative; display: flex; align-items: center; }
-        .form-grid-item input, .form-grid-item select { width: 100%; }
-        .tooltip-icon { position: absolute; right: 10px; color: var(--subtle-text); cursor: help; }
-        .tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.8rem; }
-        .tooltip-icon:hover .tooltip-text { visibility: visible; opacity: 1; }
-
+        .form-grid input, .form-grid select, .form-grid button { border: 1px solid #cbd5e1; padding: 0.6rem 0.75rem; border-radius: 0.375rem; width: 100%; box-sizing: border-box; height: 42px; }
+        
         .btn { border: none; cursor: pointer; font-weight: 600; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 0.375rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); transition: background-color 0.2s; padding: 0.6rem 1rem; height: 42px; }
         .btn-blue { background-color: var(--blue-color); }
         .btn-indigo { background-color: var(--primary-color); }
@@ -91,7 +84,6 @@
         #toast-notification.show { visibility: visible; opacity: 1; bottom: 50px; }
         #toast-notification.success { background-color: var(--green-color); }
         #toast-notification.error { background-color: var(--red-color); }
-
     </style>
 </head>
 <body>
@@ -115,11 +107,15 @@
                  <p id="help-link"><a href="https://wa.link/u8668y" target="_blank">Butuh Bantuan?</a></p>
             </div>
             <div id="register-form-container" class="hidden">
-                <h2 class="app-header" style="margin-bottom: 1rem;">Order Lisensi</h2>
+                <h2 class="app-header" style="margin-bottom: 1rem;">Daftar Akun Baru</h2>
                 <form id="register-form" class="auth-form">
-                    <p style="text-align: center; color: var(--subtle-text);">Klik tombol di bawah untuk memesan kunci lisensi Anda langsung melalui WhatsApp.</p>
-                    <button type="submit" id="register-btn" class="btn btn-green">
-                        <span>Order via WhatsApp</span>
+                    <input type="text" id="register-name" placeholder="Nama Lengkap" required>
+                    <input type="tel" id="register-whatsapp" placeholder="Nomor WhatsApp" required>
+                    <input type="email" id="register-email" placeholder="Email Anda" required>
+                    <input type="text" id="register-license" placeholder="Kode Lisensi" required>
+                    <button type="submit" id="register-btn" class="btn btn-indigo">
+                        <span>Daftar & Masuk</span>
+                        <div class="btn-spinner hidden"></div>
                     </button>
                 </form>
             </div>
@@ -146,23 +142,17 @@
             </div>
             <div class="form-grid">
                 <input type="text" id="topic" placeholder="Masukkan topik ebook...">
-                <div class="form-grid-item">
-                     <select id="style">
-                        <option value="Santai dan Menarik">Gaya: Santai</option>
-                        <option value="Formal dan Edukatif">Gaya: Formal</option>
-                        <option value="Inspiratif dan Motivasi">Gaya: Motivasi</option>
-                    </select>
-                    <div class="tooltip-icon"><i data-lucide="help-circle" width="16" height="16"></i><span class="tooltip-text">Pilih gaya penulisan AI. Formal untuk materi edukatif, Santai untuk tulisan yang lebih ringan.</span></div>
-                </div>
-                <div class="form-grid-item">
-                    <select id="persona">
-                        <option value="Pakar di Bidangnya">Persona: Pakar</option>
-                        <option value="Jurnalis Investigatif">Persona: Jurnalis</option>
-                        <option value="Pencerita yang Handal">Persona: Pencerita</option>
-                        <option value="Komedian">Persona: Komedian</option>
-                    </select>
-                    <div class="tooltip-icon"><i data-lucide="help-circle" width="16" height="16"></i><span class="tooltip-text">Pilih sudut pandang penulis AI. Pakar akan menulis secara mendalam, Pencerita akan membuat alur naratif.</span></div>
-                </div>
+                <select id="style">
+                    <option value="Santai dan Menarik">Gaya: Santai</option>
+                    <option value="Formal dan Edukatif">Gaya: Formal</option>
+                    <option value="Inspiratif dan Motivasi">Gaya: Motivasi</option>
+                </select>
+                <select id="persona">
+                    <option value="Pakar di Bidangnya">Persona: Pakar</option>
+                    <option value="Jurnalis Investigatif">Persona: Jurnalis</option>
+                    <option value="Pencerita yang Handal">Persona: Pencerita</option>
+                    <option value="Komedian">Persona: Komedian</option>
+                </select>
                 <button id="add-to-queue-btn" class="btn btn-blue">
                     <i data-lucide="plus-circle"></i>
                     <span>Tambah</span>
@@ -210,7 +200,7 @@
             <div class="table-container">
                 <table>
                     <thead>
-                        <tr><th>Kode Lisensi</th><th>Diklaim oleh (Email)</th><th>Tanggal Klaim</th><th>Aksi</th></tr>
+                        <tr><th>Kode Lisensi</th><th>Diklaim oleh (Email)</th><th>Nama</th><th>WhatsApp</th><th>Tanggal Klaim</th><th>Aksi</th></tr>
                     </thead>
                     <tbody id="admin-license-table-body"></tbody>
                 </table>
@@ -285,6 +275,10 @@
             const loginEmailInput = document.getElementById('login-email');
             const loginBtn = document.getElementById('login-btn');
             const registerForm = document.getElementById('register-form');
+            const registerNameInput = document.getElementById('register-name');
+            const registerWhatsappInput = document.getElementById('register-whatsapp');
+            const registerEmailInput = document.getElementById('register-email');
+            const registerLicenseInput = document.getElementById('register-license');
             const registerBtn = document.getElementById('register-btn');
             const authErrorMsg = document.getElementById('auth-error-msg');
             const logoutBtn = document.getElementById('logout-btn');
@@ -354,20 +348,49 @@
                 }
             });
 
-            registerForm.addEventListener('submit', (e) => {
+            registerForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                modalTitle.textContent = "Langkah Selanjutnya";
-                modalBody.innerHTML = `
-                    <p>Anda akan diarahkan ke WhatsApp untuk memesan lisensi dari admin.</p>
-                    <p>Setelah pembayaran, admin akan memberikan <strong>Kode Lisensi</strong>.</p>
-                    <p>Gunakan <strong>Kode Lisensi</strong> dan <strong>Email Anda</strong> untuk masuk melalui halaman login.</p>
-                `;
-                modalFooter.innerHTML = `<button id="wa-redirect-btn" class="btn btn-green">Lanjutkan ke WhatsApp</button>`;
-                appModal.style.display = 'flex';
-                document.getElementById('wa-redirect-btn').onclick = () => {
-                     window.open('https://wa.link/u8668y', '_blank');
-                     appModal.style.display = 'none';
-                };
+                const name = registerNameInput.value.trim();
+                const whatsapp = registerWhatsappInput.value.trim();
+                const email = registerEmailInput.value.trim().toLowerCase();
+                const licenseKey = registerLicenseInput.value.trim();
+                if (!name || !whatsapp || !email || !licenseKey) {
+                    authErrorMsg.textContent = 'Semua field wajib diisi.';
+                    return;
+                }
+                
+                setButtonLoading(registerBtn, true);
+                authErrorMsg.textContent = '';
+
+                try {
+                    // Cek lisensi
+                    const licenseRef = doc(db, "licenses", licenseKey);
+                    const licenseSnap = await getDoc(licenseRef);
+                    if (!licenseSnap.exists()) throw new Error('Kode lisensi tidak valid.');
+                    if (licenseSnap.data().claimedByEmail) throw new Error('Kode lisensi sudah digunakan.');
+
+                    // Cek email
+                    const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
+                    const emailSnap = await getDocs(emailQuery);
+                    if (!emailSnap.empty) throw new Error('Email ini sudah terdaftar. Silakan masuk.');
+
+                    // Klaim lisensi
+                    await updateDoc(licenseRef, {
+                        claimedByEmail: email,
+                        claimedByName: name,
+                        claimedByWhatsapp: whatsapp,
+                        claimedAt: serverTimestamp()
+                    });
+
+                    // Login
+                    localStorage.setItem('ebookAppUserEmail', email);
+                    showApp(email, licenseKey);
+
+                } catch (error) {
+                    authErrorMsg.textContent = error.message;
+                } finally {
+                    setButtonLoading(registerBtn, false);
+                }
             });
             
             logoutBtn.addEventListener('click', () => {
@@ -471,7 +494,9 @@
                 adminLicenseTableBody.innerHTML = licenses.map(lic => `
                     <tr>
                         <td>${lic.id}</td>
-                        <td>${lic.claimedByEmail || '<em>Belum diklaim</em>'}</td>
+                        <td>${lic.claimedByEmail || '<em>-</em>'}</td>
+                        <td>${lic.claimedByName || '<em>-</em>'}</td>
+                        <td>${lic.claimedByWhatsapp || '<em>-</em>'}</td>
                         <td>${lic.claimedAt ? new Date(lic.claimedAt.seconds * 1000).toLocaleString('id-ID') : '-'}</td>
                         <td>
                             <button class="btn btn-blue admin-action-btn edit-license-btn" data-id="${lic.id}" data-email="${lic.claimedByEmail || ''}">Edit</button>
@@ -492,7 +517,12 @@
                     const licenseRef = doc(db, "licenses", newKey);
                     const licenseSnap = await getDoc(licenseRef);
                     if (licenseSnap.exists()) throw new Error('Lisensi dengan kunci ini sudah ada.');
-                    await setDoc(licenseRef, { claimedByEmail: null, claimedAt: null });
+                    await setDoc(licenseRef, {
+                        claimedByEmail: null,
+                        claimedByName: null,
+                        claimedByWhatsapp: null,
+                        claimedAt: null
+                    });
                     showToast(`Lisensi "${newKey}" berhasil dibuat.`, 'success');
                     newLicenseKeyInput.value = '';
                 } catch (error) {
@@ -500,14 +530,95 @@
                 }
             });
 
-            function handleEditLicense(e) { /* ... same as before ... */ }
-            function handleDeleteLicense(e) { /* ... same as before ... */ }
+            function handleEditLicense(e) {
+                const id = e.target.dataset.id;
+                const email = e.target.dataset.email;
+                modalTitle.textContent = "Edit Lisensi";
+                modalBody.innerHTML = `
+                    <p>Mengedit lisensi: <strong>${id}</strong></p>
+                    <form id="edit-license-modal-form" class="auth-form">
+                        <label for="edit-license-email">Email Pengguna (kosongkan untuk membebaskan lisensi)</label>
+                        <input type="email" id="edit-license-email" value="${email}" placeholder="Email pengguna baru...">
+                    </form>
+                `;
+                modalFooter.innerHTML = `<button id="save-edit-license-btn" class="btn btn-green">Simpan</button>`;
+                appModal.style.display = 'flex';
+
+                document.getElementById('save-edit-license-btn').onclick = async () => {
+                    const newEmail = document.getElementById('edit-license-email').value.trim().toLowerCase() || null;
+                    const licenseRef = doc(db, "licenses", id);
+                    try {
+                        if (newEmail) {
+                            const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", newEmail));
+                            const emailSnap = await getDocs(emailQuery);
+                            if (!emailSnap.empty && emailSnap.docs[0].id !== id) {
+                                throw new Error('Email tersebut sudah digunakan oleh lisensi lain.');
+                            }
+                        }
+                        
+                        await updateDoc(licenseRef, {
+                            claimedByEmail: newEmail,
+                            claimedAt: newEmail ? serverTimestamp() : null
+                        });
+                        showToast('Lisensi berhasil diperbarui.', 'success');
+                        appModal.style.display = 'none';
+                    } catch (error) {
+                       alert('Gagal memperbarui lisensi: ' + error.message);
+                    }
+                };
+            }
+            function handleDeleteLicense(e) {
+                const id = e.target.dataset.id;
+                modalTitle.textContent = "Konfirmasi Hapus";
+                modalBody.innerHTML = `<p>Apakah Anda yakin ingin menghapus lisensi <strong>${id}</strong> secara permanen?</p>`;
+                modalFooter.innerHTML = `<button id="confirm-delete-btn" class="btn btn-red">Ya, Hapus</button><button id="cancel-delete-btn" class="btn btn-blue">Batal</button>`;
+                appModal.style.display = 'flex';
+
+                document.getElementById('confirm-delete-btn').onclick = async () => {
+                    try {
+                        await deleteDoc(doc(db, "licenses", id));
+                        showToast(`Lisensi ${id} berhasil dihapus.`, 'success');
+                        appModal.style.display = 'none';
+                    } catch (error) {
+                        showToast(`Gagal menghapus lisensi: ${error.message}`, 'error');
+                    }
+                };
+                 document.getElementById('cancel-delete-btn').onclick = () => appModal.style.display = 'none';
+            }
 
 
             // --- EBOOK APP LOGIC ---
-            async function callApiViaProxy(payload) { /* ... same as before ... */ }
-            function addTopicToQueue() { /* ... same as before ... */ }
-            
+            async function callApiViaProxy(payload) {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleAiApiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error("API Error Response:", errorBody);
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(errorBody);
+                    } catch(e) {
+                         throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+                    }
+                    const errorMessage = errorData.error?.message || `HTTP error! status: ${response.status}`;
+                    throw new Error(errorMessage);
+                }
+                return response.json();
+             }
+            function addTopicToQueue() {
+                const topic = topicInput.value.trim();
+                if (topic) {
+                    ebookQueue.push({ id: Date.now(), topic, style: styleSelect.value, persona: personaSelect.value, status: 'Menunggu', htmlContent: null });
+                    topicInput.value = '';
+                    renderQueueTable();
+                } else {
+                    showCustomAlert('Topik tidak boleh kosong.');
+                }
+             }
             function renderQueueTable() {
                 emptyQueueMsg.style.display = ebookQueue.length === 0 ? 'block' : 'none';
                 processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
@@ -529,7 +640,6 @@
                 });
                 lucide.createIcons();
              }
-            
             async function processQueue() { 
                 isProcessing = true;
                 renderQueueTable();
@@ -558,7 +668,6 @@
                 renderQueueTable();
                 showCustomAlert('Semua antrean telah selesai diproses!');
             }
-
             function showCustomAlert(message) {
                  modalTitle.textContent = "Informasi";
                  modalBody.innerHTML = `<p>${message}</p>`;
@@ -570,12 +679,42 @@
                 if (item) item.status = status;
                 renderQueueTable();
              }
-            function parseOutline(text) { /* ... same as before ... */ }
-            function saveAsPdf() { /* ... same as before ... */ }
-            function saveAsDocx() { /* ... same as before ... */ }
-            function formatContent(text) { /* ... same as before ... */ }
-            function generateFallbackEbook(topic, errorMessage) { /* ... same as before ... */ }
-
+            function parseOutline(text) { 
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                let title = "Judul Ebook";
+                const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
+                if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
+                else {
+                    const firstLine = lines.find(line => !line.match(/\*\*?Bab\s*\d*:/i));
+                    if(firstLine) title = firstLine.trim();
+                }
+                const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
+                if (chapters.length === 0) throw new Error("Gagal membuat outline bab dari respons AI.");
+                return { title, chapters };
+             }
+            function saveAsPdf() { 
+                const element = document.getElementById('modal-ebook-content');
+                const title = element.querySelector('.ebook-title')?.textContent || 'ebook';
+                const fileName = title.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
+                const opt = { margin: [0.5, 0.5, 0.5, 0.5], filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }, pagebreak: { mode: 'css', before: '.ebook-chapter' } };
+                html2pdf().set(opt).from(element).save();
+            }
+            function saveAsDocx() {
+                const element = document.getElementById('modal-ebook-content');
+                const title = element.querySelector('.ebook-title')?.textContent || 'ebook';
+                const fileName = title.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.docx';
+                const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${element.innerHTML}</body></html>`;
+                saveAs(htmlDocx.asBlob(content), fileName);
+             }
+            function formatContent(text) {
+                return text.replace(/\n{2,}/g, '</p><p>').replace(/\*/g,'');
+             }
+            function generateFallbackEbook(topic, errorMessage) {
+                const title = `Gagal Membuat Ebook: ${topic}`;
+                const chapters = [ "Detail Kesalahan" ];
+                const placeholderContent = `Terjadi kesalahan saat menghubungi server AI. Pesan error: "${errorMessage}". Harap periksa kembali API Key Google AI Anda atau coba lagi nanti.`;
+                return renderEbookToHtml(title, chapters.map(chapterTitle => ({ title: chapterTitle, content: placeholderContent })));
+             }
             async function generateOutline(topic) {
                 const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n**Bab 2:** [Judul Bab 2]\n**Bab 3:** [Judul Bab 3]\n**Bab 4:** [Judul Bab 4]\n**Bab 5:** [Judul Bab 5]`;
                 const outlineResult = await callApiViaProxy({ contents: [{ role: "user", parts: [{ text: promptOutline }] }] });
@@ -588,8 +727,28 @@
                 return contentResult.candidates[0].content.parts[0].text;
             }
 
-            function renderEbookToHtml(title, ebookData) { /* ... same as before ... */ }
-            function showEbookInModal(htmlContent, isFallback) { /* ... same as before ... */ }
+            function renderEbookToHtml(title, ebookData) { 
+                let html = `<h1 class="ebook-title">${title}</h1>`;
+                html += `<div class="ebook-toc"><h3 class="ebook-chapter-title">Daftar Isi</h3><ul>`;
+                ebookData.forEach((chapter, index) => { html += `<li>Bab ${index + 1}: ${chapter.title}</li>`; });
+                html += `</ul></div>`;
+                ebookData.forEach((chapter, index) => {
+                    html += `<div class="ebook-chapter">
+                                <h2 class="ebook-chapter-title">Bab ${index + 1}: ${chapter.title}</h2>
+                                <div class="ebook-chapter-content"><p>${formatContent(chapter.content)}</p></div>
+                             </div>`;
+                });
+                return html;
+            }
+            function showEbookInModal(htmlContent, isFallback) { 
+                modalTitle.textContent = isFallback ? "Hasil Ebook (Gagal)" : "Hasil Ebook";
+                 modalBody.innerHTML = `<div id="modal-ebook-content" class="ebook-container">${htmlContent}</div>`;
+                 modalFooter.innerHTML = `<button id="modal-save-docx-btn" class="btn btn-orange"><i data-lucide="file-text"></i><span>Download (.docx)</span></button><button id="modal-save-pdf-btn" class="btn btn-green"><i data-lucide="download"></i><span>Simpan PDF</span></button>`;
+                 lucide.createIcons();
+                 document.getElementById('modal-save-pdf-btn').onclick = saveAsPdf;
+                 document.getElementById('modal-save-docx-btn').onclick = saveAsDocx;
+                 appModal.style.display = 'flex';
+            }
             
             // --- GLOBAL LISTENERS & INIT ---
             init();
