@@ -184,6 +184,10 @@
                 measurementId: "G-799ZLZNTK4"
             };
 
+            // [PERBAIKAN] 2. KONFIGURASI GOOGLE AI API KEY
+            // Dapatkan dari https://aistudio.google.com/app/apikey
+            const googleAiApiKey = "AIzaSyCPQQovLjGPGQVeDFFsNhaHZu6j-pVHCUs";
+
             // Logika ini akan menggunakan konfigurasi dari Canvas jika tersedia,
             // atau menggunakan konfigurasi manual di atas jika tidak.
             const firebaseConfig = (typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0)
