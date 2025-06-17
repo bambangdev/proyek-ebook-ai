@@ -107,14 +107,11 @@
                  <p id="help-link"><a href="https://wa.link/u8668y" target="_blank">Butuh Bantuan?</a></p>
             </div>
             <div id="register-form-container" class="hidden">
-                <h2 class="app-header" style="margin-bottom: 1rem;">Daftar Akun Baru</h2>
+                <h2 class="app-header" style="margin-bottom: 1rem;">Order Lisensi via WhatsApp</h2>
                 <form id="register-form" class="auth-form">
-                    <input type="text" id="register-name" placeholder="Nama Lengkap" required>
-                    <input type="tel" id="register-whatsapp" placeholder="Nomor WhatsApp" required>
-                    <input type="email" id="register-email" placeholder="Email Anda" required>
-                    <button type="submit" id="register-btn" class="btn btn-indigo">
-                        <span>Daftar & Masuk</span>
-                        <div class="btn-spinner hidden"></div>
+                    <p style="text-align: center; color: var(--subtle-text);">Klik tombol di bawah untuk memesan kunci lisensi Anda langsung melalui WhatsApp.</p>
+                    <button type="submit" id="register-btn" class="btn btn-green">
+                        <span>Order via WhatsApp</span>
                     </button>
                 </form>
             </div>
@@ -170,7 +167,7 @@
             <div style="margin-top: 2rem;">
                 <button id="process-queue-btn" class="btn btn-indigo btn-full" disabled>
                     <i data-lucide="play-circle"></i>
-                    <span>Mulai Buat Ebook</span>
+                    <span>Mulai Proses Antrean</span>
                 </button>
             </div>
         </div>
@@ -274,11 +271,6 @@
             const loginEmailInput = document.getElementById('login-email');
             const loginBtn = document.getElementById('login-btn');
             const registerForm = document.getElementById('register-form');
-            const registerNameInput = document.getElementById('register-name');
-            const registerWhatsappInput = document.getElementById('register-whatsapp');
-            const registerEmailInput = document.getElementById('register-email');
-            const registerLicenseInput = document.getElementById('register-license');
-            const registerBtn = document.getElementById('register-btn');
             const authErrorMsg = document.getElementById('auth-error-msg');
             const logoutBtn = document.getElementById('logout-btn');
             const activeUserEmail = document.getElementById('active-user-email');
@@ -347,49 +339,10 @@
                 }
             });
 
-            registerForm.addEventListener('submit', async (e) => {
+            registerForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const name = registerNameInput.value.trim();
-                const whatsapp = registerWhatsappInput.value.trim();
-                const email = registerEmailInput.value.trim().toLowerCase();
-                const licenseKey = registerLicenseInput.value.trim();
-                if (!name || !whatsapp || !email || !licenseKey) {
-                    authErrorMsg.textContent = 'Semua field wajib diisi.';
-                    return;
-                }
-                
-                setButtonLoading(registerBtn, true);
-                authErrorMsg.textContent = '';
-
-                try {
-                    // Cek lisensi
-                    const licenseRef = doc(db, "licenses", licenseKey);
-                    const licenseSnap = await getDoc(licenseRef);
-                    if (!licenseSnap.exists()) throw new Error('Kode lisensi tidak valid.');
-                    if (licenseSnap.data().claimedByEmail) throw new Error('Kode lisensi sudah digunakan.');
-
-                    // Cek email
-                    const emailQuery = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
-                    const emailSnap = await getDocs(emailQuery);
-                    if (!emailSnap.empty) throw new Error('Email ini sudah terdaftar. Silakan masuk.');
-
-                    // Klaim lisensi
-                    await updateDoc(licenseRef, {
-                        claimedByEmail: email,
-                        claimedByName: name,
-                        claimedByWhatsapp: whatsapp,
-                        claimedAt: serverTimestamp()
-                    });
-
-                    // Login
-                    localStorage.setItem('ebookAppUserEmail', email);
-                    showApp(email, licenseKey);
-
-                } catch (error) {
-                    authErrorMsg.textContent = error.message;
-                } finally {
-                    setButtonLoading(registerBtn, false);
-                }
+                const whatsappUrl = `https://api.whatsapp.com/send?phone=6287825522233&text=halo%20saya%20mau%20pesan%20license%20key%20Ebook%20Gen%20Pro`;
+                window.open(whatsappUrl, '_blank');
             });
             
             logoutBtn.addEventListener('click', () => {
@@ -769,4 +722,4 @@
         }
     </script>
 </body>
-</html>
+</ht
