@@ -291,6 +291,10 @@
             const adminAreaBtn = document.getElementById('admin-area-btn');
             const backToAppBtn = document.getElementById('back-to-app-btn');
             
+            const loginFormContainer = document.getElementById('login-form-container');
+            const registerFormContainer = document.getElementById('register-form-container');
+            const showLoginBtn = document.getElementById('show-login-btn');
+            const showRegisterBtn = document.getElementById('show-register-btn');
             const loginForm = document.getElementById('login-form');
             const loginEmailInput = document.getElementById('login-email');
             const loginBtn = document.getElementById('login-btn');
@@ -331,11 +335,24 @@
             const toastNotification = document.getElementById('toast-notification');
             
             // --- UI & AUTH LOGIC ---
-            function toggleAuthView(view) { /* ... */ }
-            document.getElementById('show-login-btn').addEventListener('click', () => toggleAuthView('login'));
-            document.getElementById('show-register-btn').addEventListener('click', () => toggleAuthView('register'));
+            function toggleAuthView(view) { 
+                authErrorMsg.textContent = '';
+                const isLogin = view === 'login';
+                loginFormContainer.classList.toggle('hidden', !isLogin);
+                registerFormContainer.classList.toggle('hidden', isLogin);
+                showLoginBtn.classList.toggle('active', isLogin);
+                showRegisterBtn.classList.toggle('active', !isLogin);
+            }
+            showLoginBtn.addEventListener('click', () => toggleAuthView('login'));
+            showRegisterBtn.addEventListener('click', () => toggleAuthView('register'));
             
-            function setButtonLoading(button, isLoading) { /* ... */ }
+            function setButtonLoading(button, isLoading) {
+                const spinner = button.querySelector('.btn-spinner');
+                const text = button.querySelector('span');
+                button.disabled = isLoading;
+                if (spinner) spinner.classList.toggle('hidden', !isLoading);
+                if (text) text.style.opacity = isLoading ? '0.5' : '1';
+            }
 
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -399,7 +416,8 @@
                     await updateDoc(licenseRef, userRecord);
                     
                     localStorage.setItem('ebookAppUserEmail', email);
-                    await handleUserLogin({id: licenseKey, ...userRecord});
+                    // Pass a cleaned-up object to handleUserLogin
+                    await handleUserLogin({id: licenseKey, ...licenseSnap.data(), ...userRecord});
 
                 } catch (error) {
                     authErrorMsg.textContent = error.message;
@@ -420,12 +438,17 @@
                 const docSnap = querySnapshot.docs[0];
                 return { id: docSnap.id, ...docSnap.data() };
             }
-
+            
+            // [FIX] Robust function to handle login and quota reset
             async function handleUserLogin(userData) {
                 const now = new Date();
-                const resetDate = userData.quotaResetDate.toDate();
+                // Check if quotaResetDate exists and has a toDate method (is a Firestore Timestamp)
+                const resetDate = userData.quotaResetDate && typeof userData.quotaResetDate.toDate === 'function' 
+                    ? userData.quotaResetDate.toDate() 
+                    : null;
                 
-                if (now >= resetDate) {
+                // If there's no reset date, or if it's in the past, reset the quota
+                if (!resetDate || now >= resetDate) {
                     const nextMonth = new Date();
                     nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
                     nextMonth.setHours(0, 0, 0, 0);
@@ -436,8 +459,10 @@
                         quotaResetDate: nextMonth
                     });
                     
+                    // Update local data to match
                     userData.quotaUsed = 0;
-                    userData.quotaResetDate = { toDate: () => nextMonth }; 
+                    // Emulate a timestamp object for consistency
+                    userData.quotaResetDate = { toDate: () => nextMonth };
                 }
                 
                 currentUserData = userData;
@@ -487,10 +512,59 @@
                 authStatus.textContent = '';
             }
             
-            function showToast(message, type = 'success') { /* ... */ }
+            function showToast(message, type = 'success') {
+                toastNotification.textContent = message;
+                toastNotification.className = 'show ' + type;
+                setTimeout(() => {
+                    toastNotification.className = toastNotification.className.replace('show', '');
+                }, 3000);
+            }
 
-            // ADMIN LOGIC ...
-            // ... (Kode Admin CRUD tidak berubah, hanya tabel ditambah kolom) ...
+            // --- ADMIN AREA LOGIC ---
+            adminAreaBtn.addEventListener('click', () => {
+                mainContainer.classList.add('hidden');
+                adminView.classList.remove('hidden');
+                adminView.classList.add('fade-in');
+                loadAdminData();
+            });
+
+            backToAppBtn.addEventListener('click', () => {
+                adminView.classList.add('hidden');
+                mainContainer.classList.remove('hidden');
+                mainContainer.classList.add('fade-in');
+                if (unsubscribeAdminListener) unsubscribeAdminListener();
+            });
+
+            function loadAdminData() {
+                const q = query(collection(db, "licenses"));
+                unsubscribeAdminListener = onSnapshot(q, (querySnapshot) => {
+                    allLicensesCache = [];
+                    querySnapshot.forEach((doc) => {
+                        allLicensesCache.push({ id: doc.id, ...doc.data() });
+                    });
+                    filterAndRenderAdminTable();
+                });
+            }
+
+            function filterAndRenderAdminTable() {
+                const searchTerm = adminSearchInput.value.toLowerCase();
+                const filterType = adminFilterSelect.value;
+                
+                const filteredLicenses = allLicensesCache.filter(lic => {
+                    const matchesSearch = lic.id.toLowerCase().includes(searchTerm) || (lic.claimedByEmail && lic.claimedByEmail.toLowerCase().includes(searchTerm));
+                    const matchesFilter = (filterType === 'all') || 
+                                          (filterType === 'claimed' && lic.claimedByEmail) || 
+                                          (filterType === 'unclaimed' && !lic.claimedByEmail);
+                    return matchesSearch && matchesFilter;
+                });
+
+                renderAdminTable(filteredLicenses);
+            }
+
+            adminSearchInput.addEventListener('input', filterAndRenderAdminTable);
+            adminFilterSelect.addEventListener('change', filterAndRenderAdminTable);
+
+
             function renderAdminTable(licenses) {
                 adminLicenseTableBody.innerHTML = licenses.map(lic => `
                     <tr>
@@ -511,7 +585,7 @@
                 document.querySelectorAll('.delete-license-btn').forEach(btn => btn.addEventListener('click', handleDeleteLicense));
             }
 
-             createLicenseForm.addEventListener('submit', async (e) => {
+            createLicenseForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const newKey = newLicenseKeyInput.value.trim();
                 const tier = newLicenseTierSelect.value;
@@ -536,11 +610,46 @@
                 }
             });
 
-            // EBOOK APP LOGIC...
-            // ... (Fungsi generate ebook, dll tidak berubah)
+            function handleEditLicense(e) { /* ... */ }
+            function handleDeleteLicense(e) { /* ... */ }
+
+
+            // --- EBOOK APP LOGIC ---
+            async function callApiViaProxy(payload) { /* ... */ }
+            function addTopicToQueue() {
+                const topic = topicInput.value.trim();
+                if (topic) {
+                    ebookQueue.push({ id: Date.now(), topic, style: styleSelect.value, persona: personaSelect.value, status: 'Menunggu', htmlContent: null });
+                    topicInput.value = '';
+                    renderQueueTable();
+                } else {
+                    showCustomAlert('Topik tidak boleh kosong.');
+                }
+             }
+            function renderQueueTable() {
+                emptyQueueMsg.style.display = ebookQueue.length === 0 ? 'block' : 'none';
+                processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
+                queueTableBody.innerHTML = ebookQueue.map(item => `
+                    <tr id="row-${item.id}" class="${item.status.startsWith('Membuat') ? 'processing-row' : ''}">
+                        <td>${item.topic}</td>
+                        <td>${item.style}</td>
+                        <td>${item.persona}</td>
+                        <td class="status-cell">${item.status === 'Proses...' || item.status.startsWith('Membuat') ? '<div class="spinner status-spinner"></div>' : ''} ${item.status}</td>
+                        <td class="action-cell">
+                            ${(item.status === 'Selesai' || item.status.startsWith('Gagal')) ? `<button class="btn btn-green view-result-btn ${item.status === 'Selesai' ? 'pulse-btn' : ''}" data-id="${item.id}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Lihat</button>` : ''}
+                        </td>
+                    </tr>`).join('');
+                document.querySelectorAll('.view-result-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        const item = ebookQueue.find(q => q.id === parseInt(e.currentTarget.dataset.id));
+                        if (item) showEbookInModal(item.htmlContent, item.status.includes('Gagal'));
+                    };
+                });
+                lucide.createIcons();
+             }
             async function processQueue() { 
                 const ebooksToProcess = ebookQueue.filter(item => item.status === 'Menunggu');
-                const remainingQuota = TIER_CONFIG[currentUserData.tier]?.quota - currentUserData.quotaUsed;
+                const remainingQuota = (TIER_CONFIG[currentUserData.tier]?.quota || 0) - currentUserData.quotaUsed;
                 
                 if (ebooksToProcess.length > remainingQuota) {
                     showCustomAlert(`Gagal! Anda mencoba memproses ${ebooksToProcess.length} ebook, tetapi sisa kuota Anda hanya ${remainingQuota}.`);
@@ -552,20 +661,63 @@
                 
                 let processedCount = 0;
                 for (const item of ebooksToProcess) {
-                    // ... (logika proses per item)
-                    await updateDoc(doc(db, "licenses", currentUserData.id), {
-                        quotaUsed: increment(1)
-                    });
-                    currentUserData.quotaUsed++;
-                    processedCount++;
+                    if (item.status === 'Menunggu') {
+                        try {
+                            updateItemStatus(item.id, 'Membuat kerangka...');
+                            const { title, chapters } = await generateOutline(item.topic);
+                            
+                            let ebookData = [];
+                            for (let i = 0; i < chapters.length; i++) {
+                                updateItemStatus(item.id, `Menulis Bab ${i + 1}...`);
+                                const chapterContent = await generateChapterContent(item.topic, chapters[i], item.style, item.persona);
+                                ebookData.push({ title: chapters[i], content: chapterContent });
+                            }
+                            item.htmlContent = renderEbookToHtml(title, ebookData);
+                            await updateDoc(doc(db, "licenses", currentUserData.id), {
+                                quotaUsed: increment(1)
+                            });
+                            currentUserData.quotaUsed++;
+                            processedCount++;
+                            updateItemStatus(item.id, 'Selesai');
+                        } catch (error) {
+                            console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
+                            item.htmlContent = generateFallbackEbook(item.topic, error.message);
+                            updateItemStatus(item.id, `Gagal (${error.message})`);
+                        }
+                    }
                 }
                 
                 isProcessing = false;
                 renderQueueTable();
                 showCustomAlert(`${processedCount} ebook telah selesai diproses!`);
-                activeUserQuota.textContent = TIER_CONFIG[currentUserData.tier]?.quota - currentUserData.quotaUsed;
+                activeUserQuota.textContent = (TIER_CONFIG[currentUserData.tier]?.quota || 0) - currentUserData.quotaUsed;
             }
-
+            function showCustomAlert(message) { /* ... */ }
+            function updateItemStatus(id, status) {
+                const item = ebookQueue.find(q => q.id === id);
+                if (item) item.status = status;
+                renderQueueTable();
+             }
+            function parseOutline(text) { /* ... */ }
+            function saveAsPdf() { /* ... */ }
+            function saveAsDocx() { /* ... */ }
+            function formatContent(text) { /* ... */ }
+            function generateFallbackEbook(topic, errorMessage) { /* ... */ }
+            async function generateOutline(topic) { /* ... */ }
+            async function generateChapterContent(topic, chapterTitle, style, persona) { /* ... */ }
+            function renderEbookToHtml(title, ebookData) { /* ... */ }
+            function showEbookInModal(htmlContent, isFallback) { /* ... */ }
+            
+            // --- GLOBAL LISTENERS & INIT ---
+            init();
+            renderQueueTable();
+            lucide.createIcons();
+            addToQueueBtn.addEventListener('click', addTopicToQueue);
+            processQueueBtn.addEventListener('click', processQueue);
+            modalCloseBtn.addEventListener('click', () => appModal.style.display = 'none');
+            window.addEventListener('click', (event) => {
+                if (event.target == appModal) appModal.style.display = 'none';
+            });
 
         } catch (e) {
             console.error("Aplikasi gagal diinisialisasi:", e);
