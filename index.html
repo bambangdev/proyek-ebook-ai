@@ -66,13 +66,7 @@
         <!-- Tampilan Autentikasi -->
         <div id="auth-view" class="hidden">
             <div class="auth-container">
-                <h2 class="app-header" style="margin-bottom: 1rem;">Masuk atau Daftar</h2>
-                <p style="text-align:center; color: var(--subtle-text); margin-bottom: 1.5rem;">Masukkan email Anda. Kami akan mengirimkan tautan masuk yang aman, tidak perlu kata sandi.</p>
-                <form id="login-form" class="auth-form">
-                    <input type="email" id="login-email" placeholder="contoh@email.com" required>
-                    <button type="submit" id="login-btn" class="btn" style="background-color: var(--primary-color);">Kirim Tautan Masuk</button>
-                </form>
-                <p id="auth-error-msg" style="color: var(--red-color); text-align: center; margin-top: 1rem; min-height: 1.25rem;"></p>
+                <!-- Konten akan diisi oleh JS, baik form login atau pesan sukses -->
             </div>
         </div>
         
@@ -163,7 +157,7 @@
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
-            const functions = getFunctions(app, "asia-southeast1"); // Ganti region jika perlu
+            const functions = getFunctions(app, "asia-southeast1"); 
 
             const generateEbookContent = httpsCallable(functions, 'generateEbookContent');
 
@@ -179,13 +173,10 @@
             // DOM Elements
             const loadingView = document.getElementById('loading-view');
             const authView = document.getElementById('auth-view');
+            const authViewContainer = document.querySelector('#auth-view .auth-container');
             const appView = document.getElementById('app-view');
             const claimLicenseView = document.getElementById('claim-license-view');
-            const loginForm = document.getElementById('login-form');
-            const loginEmailInput = document.getElementById('login-email');
-            const loginBtn = document.getElementById('login-btn');
             const authStatus = document.getElementById('auth-status');
-            const authErrorMsg = document.getElementById('auth-error-msg');
             const logoutBtn = document.getElementById('logout-btn');
             const logoutBtnClaim = document.getElementById('logout-btn-claim');
             const activeUserEmail = document.getElementById('active-user-email');
@@ -204,7 +195,9 @@
             const modalBody = document.getElementById('modal-body');
             const modalFooter = document.getElementById('modal-footer');
             const modalCloseBtn = document.querySelector('.close-button');
+            const toastNotification = document.getElementById('toast-notification');
 
+            let isProcessingSignInLink = isSignInWithEmailLink(auth, window.location.href);
 
             function showView(viewId) {
                 ['loading-view', 'auth-view', 'app-view', 'claim-license-view'].forEach(id => {
@@ -212,12 +205,25 @@
                 });
                 document.getElementById(viewId).classList.remove('hidden');
             }
+            
+            function renderLoginForm() {
+                authViewContainer.innerHTML = `
+                    <h2 class="app-header" style="margin-bottom: 1rem;">Masuk atau Daftar</h2>
+                    <p style="text-align:center; color: var(--subtle-text); margin-bottom: 1.5rem;">Masukkan email Anda. Kami akan mengirimkan tautan masuk yang aman, tidak perlu kata sandi.</p>
+                    <form id="login-form" class="auth-form">
+                        <input type="email" id="login-email" placeholder="contoh@email.com" required>
+                        <button type="submit" id="login-btn" class="btn" style="background-color: var(--primary-color);">Kirim Tautan Masuk</button>
+                    </form>
+                    <p id="auth-error-msg" style="color: var(--red-color); text-align: center; margin-top: 1rem; min-height: 1.25rem;"></p>
+                `;
+                document.getElementById('login-form').addEventListener('submit', handleLoginRequest);
+            }
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
+                    isProcessingSignInLink = false;
                     authStatus.textContent = `Autentikasi berhasil sebagai ${user.email}. Memeriksa lisensi...`;
                     const userData = await fetchUserDataByEmail(user.email);
-                    
                     if (userData) {
                         await handleUserLogin(userData);
                         showView('app-view');
@@ -225,51 +231,73 @@
                         showView('claim-license-view');
                     }
                 } else {
-                    currentUserData = null;
-                    showView('auth-view');
+                    if (isProcessingSignInLink) {
+                        return;
+                    } else {
+                        currentUserData = null;
+                        renderLoginForm();
+                        showView('auth-view');
+                    }
                 }
             });
             
             async function handleSignInLink() {
-                if (isSignInWithEmailLink(auth, window.location.href)) {
-                    let email = window.localStorage.getItem('emailForSignIn');
-                    if (!email) {
-                        email = window.prompt('Silakan masukkan email Anda untuk konfirmasi.');
-                    }
-                    try {
-                        authStatus.textContent = 'Mengonfirmasi tautan masuk...';
-                        await signInWithEmailLink(auth, email, window.location.href);
-                        window.localStorage.removeItem('emailForSignIn');
-                        window.history.replaceState(null, '', window.location.pathname);
-                    } catch (error) {
-                        authErrorMsg.textContent = `Gagal masuk: ${error.message}`;
-                        showView('auth-view');
-                    }
+                let email = window.localStorage.getItem('emailForSignIn');
+                if (!email) {
+                    email = window.prompt('Untuk keamanan, silakan masukkan kembali email Anda.');
+                }
+                if (!email) { // Jika pengguna membatalkan prompt
+                    isProcessingSignInLink = false;
+                    renderLoginForm();
+                    showView('auth-view');
+                    return;
+                }
+                try {
+                    authStatus.textContent = 'Mengonfirmasi tautan masuk...';
+                    await signInWithEmailLink(auth, email, window.location.href);
+                    window.localStorage.removeItem('emailForSignIn');
+                    window.history.replaceState(null, '', window.location.pathname);
+                } catch (error) {
+                    isProcessingSignInLink = false;
+                    renderLoginForm();
+                    document.getElementById('auth-error-msg').textContent = 'Gagal masuk: Tautan tidak valid atau sudah kedaluwarsa.';
+                    showView('auth-view');
                 }
             }
             
-            loginForm.addEventListener('submit', async (e) => {
+            async function handleLoginRequest(e) {
                 e.preventDefault();
+                const loginEmailInput = document.getElementById('login-email');
+                const loginBtn = document.getElementById('login-btn');
                 const email = loginEmailInput.value;
                 loginBtn.disabled = true;
                 loginBtn.textContent = 'Mengirim...';
                 
+                // --- PERBAIKAN DI SINI ---
                 const actionCodeSettings = {
-                    url: window.location.href,
-                    handleCodeInApp: true,
+                    url: window.location.origin + window.location.pathname,
+                    handleCodeInApp: true
                 };
 
                 try {
                     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
                     window.localStorage.setItem('emailForSignIn', email);
-                    showToast('Tautan masuk telah dikirim ke ' + email, 'success');
-                    loginBtn.textContent = 'Tautan Terkirim!';
+                    authViewContainer.innerHTML = `
+                        <div class="app-header" style="text-align: center;">
+                            <i data-lucide="mail-check" style="color: var(--green-color); width: 48px; height: 48px; margin-bottom: 1rem; display: inline-block;"></i>
+                            <h1>Tautan Terkirim!</h1>
+                        </div>
+                        <p style="text-align:center; color: var(--subtle-text);">Kami telah mengirimkan tautan masuk ke:</p>
+                        <p style="text-align:center; font-weight: 600; margin-bottom: 1.5rem; word-break: break-all;">${email}</p>
+                        <p style="text-align:center; color: var(--subtle-text);">Silakan periksa kotak masuk (dan folder spam) Anda untuk melanjutkan.</p>
+                    `;
+                    lucide.createIcons();
                 } catch (error) {
-                    authErrorMsg.textContent = `Gagal mengirim tautan: ${error.message}`;
+                    document.getElementById('auth-error-msg').textContent = `Gagal mengirim tautan: ${error.message}`;
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Kirim Tautan Masuk';
                 }
-            });
+            }
 
             document.getElementById('claim-license-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -297,9 +325,7 @@
                 }
             });
 
-            const handleLogout = () => {
-                signOut(auth).catch(error => console.error('Logout error', error));
-            };
+            const handleLogout = () => { signOut(auth).catch(error => console.error('Logout error', error)); };
             logoutBtn.addEventListener('click', handleLogout);
             logoutBtnClaim.addEventListener('click', handleLogout);
 
@@ -314,13 +340,11 @@
             async function handleUserLogin(userData) {
                 const now = new Date();
                 const resetDate = userData.quotaResetDate?.toDate();
-
                 if (!resetDate || now >= resetDate) {
                     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
                     await updateDoc(doc(db, "licenses", userData.id), { quotaUsed: 0, quotaResetDate: nextMonth });
                     userData.quotaUsed = 0;
                 }
-                
                 currentUserData = userData;
                 updateUI();
             }
@@ -328,11 +352,9 @@
             function updateUI() {
                 const tierInfo = TIER_CONFIG[currentUserData.tier] || { name: 'Unknown', quota: 0 };
                 const remainingQuota = tierInfo.quota - (currentUserData.quotaUsed || 0);
-
                 activeUserEmail.textContent = currentUserData.claimedByEmail;
                 activeUserTier.textContent = tierInfo.name;
                 activeUserQuota.textContent = remainingQuota;
-
                 const hasQuota = remainingQuota > 0;
                 generatorUi.classList.toggle('hidden', !hasQuota);
                 quotaLimitView.classList.toggle('hidden', hasQuota);
@@ -384,7 +406,6 @@
             async function processQueue() { 
                 isProcessing = true;
                 renderQueueTable();
-                
                 for (const item of ebookQueue) {
                     if (item.status === 'Menunggu') {
                         try {
@@ -393,12 +414,10 @@
                                 showToast('Kuota Anda habis.', 'error');
                                 throw new Error("Kuota habis");
                             }
-
                             updateItemStatus(item.id, 'Membuat kerangka...');
                             const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${item.topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n...`;
                             const outlineResult = await callGenerateApi(promptOutline);
                             const { title, chapters } = parseOutline(outlineResult.text);
-                            
                             let ebookData = [];
                             for (let i = 0; i < chapters.length; i++) {
                                 updateItemStatus(item.id, `Menulis Bab ${i + 1}/${chapters.length}...`);
@@ -406,13 +425,11 @@
                                 const contentResult = await callGenerateApi(contentPrompt);
                                 ebookData.push({ title: chapters[i], content: contentResult.text });
                             }
-                            
                             item.htmlContent = renderEbookToHtml(title, ebookData);
                             await updateDoc(doc(db, "licenses", currentUserData.id), { quotaUsed: increment(1) });
                             currentUserData.quotaUsed++;
                             updateItemStatus(item.id, 'Selesai');
                             updateUI();
-
                         } catch (error) {
                             console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
                             item.htmlContent = generateFallbackEbook(item.topic, error.message);
@@ -420,7 +437,6 @@
                         }
                     }
                 }
-                
                 isProcessing = false;
                 renderQueueTable();
                 showToast(`Proses antrean selesai!`, 'success');
@@ -433,70 +449,55 @@
             }
 
             function parseOutline(text) { 
+                if (!text || typeof text !== 'string') throw new Error("Respons AI tidak valid.");
                 const lines = text.split('\n').filter(line => line.trim() !== '');
                 let title = "Judul Ebook";
                 const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
                 if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
-                
-                const chapters = lines
-                    .filter(line => line.match(/\*\*?Bab\s*\d*:/i))
-                    .map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
-                if (chapters.length === 0) throw new Error("Gagal membuat outline bab.");
+                const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
+                if (chapters.length === 0) throw new Error("Gagal membuat outline bab dari respons AI.");
                 return { title, chapters };
             }
             
             function renderEbookToHtml(title, ebookData) { 
                 let html = `<h1 class="ebook-title">${title}</h1>`;
                 ebookData.forEach((chapter, index) => {
-                    html += `<div class="ebook-chapter">
-                                <h2>Bab ${index + 1}: ${chapter.title}</h2>
-                                <p>${chapter.content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>
-                             </div>`;
+                    html += `<div class="ebook-chapter"><h2>Bab ${index + 1}: ${chapter.title}</h2><p>${chapter.content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p></div>`;
                 });
                 return html;
             }
             
-            function generateFallbackEbook(topic, errorMessage) {
-                return `<h1>Gagal Membuat Ebook: ${topic}</h1><p><b>Detail Kesalahan:</b> ${errorMessage}</p>`;
-            }
+            function generateFallbackEbook(topic, errorMessage) { return `<h1>Gagal Membuat Ebook: ${topic}</h1><p><b>Detail Kesalahan:</b> ${errorMessage}</p>`; }
 
             function showEbookInModal(item) { 
                 modalTitle.textContent = item.status.includes('Gagal') ? "Detail Kegagalan" : `Ebook: ${item.topic}`;
                 modalBody.innerHTML = `<div id="modal-ebook-content">${item.htmlContent}</div>`;
                 modalFooter.innerHTML = `<button id="modal-save-docx-btn" class="btn" style="background-color: var(--orange-color);"><i data-lucide="file-text"></i><span>Simpan .docx</span></button><button id="modal-save-pdf-btn" class="btn" style="background-color: var(--green-color);"><i data-lucide="download"></i><span>Simpan PDF</span></button>`;
                 lucide.createIcons();
-                
-                document.getElementById('modal-save-pdf-btn').onclick = () => {
-                    const element = document.getElementById('modal-ebook-content');
-                    html2pdf().from(element).save(`${item.topic}.pdf`);
-                };
-                document.getElementById('modal-save-docx-btn').onclick = () => {
-                    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${item.htmlContent}</body></html>`;
-                    const converted = htmlDocx.asBlob(content);
-                    saveAs(converted, `${item.topic}.docx`);
-                };
-                 appModal.style.display = 'flex';
+                document.getElementById('modal-save-pdf-btn').onclick = () => { html2pdf().from(document.getElementById('modal-ebook-content')).save(`${item.topic}.pdf`); };
+                document.getElementById('modal-save-docx-btn').onclick = () => { saveAs(htmlDocx.asBlob(`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${item.htmlContent}</body></html>`), `${item.topic}.docx`); };
+                appModal.style.display = 'flex';
             }
 
             function showToast(message, type = 'success') {
                 toastNotification.textContent = message;
                 toastNotification.className = 'show ' + type;
-                setTimeout(() => {
-                    toastNotification.className = toastNotification.className.replace('show', '');
-                }, 3000);
+                setTimeout(() => { toastNotification.className = toastNotification.className.replace('show', ''); }, 3000);
             }
 
             async function init() {
                 showView('loading-view');
                 authStatus.textContent = 'Memeriksa status login...';
-                await handleSignInLink(); 
+                if (isProcessingSignInLink) {
+                    await handleSignInLink();
+                }
                 lucide.createIcons();
             }
             
             // Event Listeners
             addToQueueBtn.addEventListener('click', addTopicToQueue);
             processQueueBtn.addEventListener('click', processQueue);
-            modalCloseBtn.addEventListener('click', () => appModal.style.display = 'none');
+            if(modalCloseBtn) modalCloseBtn.addEventListener('click', () => appModal.style.display = 'none');
             window.addEventListener('click', (event) => {
                 if (event.target == appModal) appModal.style.display = 'none';
             });
