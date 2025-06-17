@@ -25,7 +25,7 @@
         .app-container, .auth-container, .admin-container { background-color: var(--card-bg); width: 100%; max-width: 64rem; margin-left: auto; margin-right: auto; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
         .auth-container { max-width: 28rem; }
         .auth-form { display: flex; flex-direction: column; gap: 1rem; }
-        .auth-form input, .admin-form input { border: 1px solid #cbd5e1; padding: 0.6rem 0.75rem; border-radius: 0.375rem; width: 100%; box-sizing: border-box; height: 42px; }
+        .auth-form input { border: 1px solid #cbd5e1; padding: 0.6rem 0.75rem; border-radius: 0.375rem; width: 100%; box-sizing: border-box; height: 42px; }
         .app-header { text-align: center; margin-bottom: 1.5rem; }
         .app-header h1 { font-size: 1.875rem; font-weight: 700; }
         .app-header p { color: var(--subtle-text); margin-top: 0.5rem; }
@@ -52,7 +52,7 @@
         #toast-notification.success { background-color: var(--green-color); }
         #toast-notification.error { background-color: var(--red-color); }
 
-        /* PERBAIKAN: Gaya Responsif untuk Area Admin */
+        /* PERBAIKAN RESPONSIVE: Gaya untuk Area Admin */
         .admin-header {
             display: flex;
             justify-content: space-between;
@@ -75,7 +75,6 @@
             flex-wrap: wrap;
         }
         
-        /* Pada layar kecil, buat elemen menjadi vertikal */
         @media (max-width: 640px) {
             .admin-header {
                 flex-direction: column;
@@ -155,8 +154,8 @@
 
             <div id="admin-view" class="admin-container hidden">
                 <div class="admin-header">
-                    <h1 class="app-header" style="margin: 0;">Manajemen Lisensi</h1>
-                    <button id="back-to-app-btn" class="btn" style="background-color: var(--blue-color);">Kembali ke Aplikasi</button>
+                    <h1 class="app-header" style="margin: 0; text-align: left;">Manajemen Lisensi</h1>
+                    <button id="back-to-app-btn" class="btn" style="background-color: var(--blue-color);">Kembali</button>
                 </div>
                 <div class="admin-form" style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
                     <h3>Buat Lisensi Baru</h3>
@@ -168,11 +167,11 @@
                 </div>
                 <div class="admin-controls">
                     <input type="search" id="admin-search-input" placeholder="Cari kode atau email..." style="flex-grow: 1; min-width: 200px; height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;">
-                    <select id="admin-filter-select" style="height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;"><option value="all">Semua Lisensi</option><option value="claimed">Sudah Diklaim</option><option value="unclaimed">Belum Diklaim</option></select>
+                    <select id="admin-filter-select" style="height: 42px; border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 0.6rem 0.75rem;"><option value="all">Semua</option><option value="claimed">Diklaim</option><option value="unclaimed">Belum Diklaim</option></select>
                 </div>
                 <div class="table-container">
                     <table>
-                        <thead><tr><th>Kode Lisensi</th><th>Paket</th><th>Email</th><th>Kuota Terpakai</th><th>Aksi</th></tr></thead>
+                        <thead><tr><th>Kode Lisensi</th><th>Paket</th><th>Email</th><th>Kuota</th><th>Aksi</th></tr></thead>
                         <tbody id="admin-license-table-body"></tbody>
                     </table>
                 </div>
@@ -414,13 +413,11 @@
             }
 
             adminAreaBtn.addEventListener('click', () => {
-                appView.classList.add('hidden');
-                adminView.classList.remove('hidden');
+                showView('admin-view');
                 loadAdminData();
             });
             backToAppBtn.addEventListener('click', () => {
-                adminView.classList.add('hidden');
-                appView.classList.remove('hidden');
+                showView('app-view');
                 if (unsubscribeAdminListener) { unsubscribeAdminListener(); unsubscribeAdminListener = null; }
             });
             function loadAdminData() {
@@ -507,21 +504,19 @@
                 document.getElementById('cancel-delete-btn').onclick = () => appModal.style.display = 'none';
             }
 
-            // PERBAIKAN: Fungsi pemanggilan API yang lebih robust
-            async function callGenerateApi(prompt) { 
+            async function callGenerateApi(prompt) {
                 try {
                     const user = auth.currentUser;
                     if (!user) {
                         throw new Error("Sesi tidak valid. Silakan logout dan login kembali.");
                     }
-                    // Memastikan token selalu fresh sebelum memanggil fungsi
-                    await user.getIdToken(true);
+                    await user.getIdToken(true); // Memaksa refresh token
                     const result = await generateEbookContent({ prompt });
                     return result.data;
                 } catch (error) {
                     console.error("Error memanggil Cloud Function:", error);
-                    if (error.code === 'unauthenticated') {
-                        throw new Error(`Sesi Anda tidak valid. Silakan logout dan login kembali.`);
+                    if (error.code === 'unauthenticated' || (error.details && error.details.code === 'unauthenticated')) {
+                         throw new Error(`Sesi Anda tidak valid. Silakan logout dan login kembali.`);
                     }
                     throw new Error(`Gagal menghubungi server: ${error.message}`);
                 }
