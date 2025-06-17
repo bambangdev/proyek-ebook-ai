@@ -140,408 +140,463 @@
         const { getFirestore, doc, getDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, increment, onSnapshot, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
         const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js");
         
-        try {
-            const firebaseConfig = {
-                apiKey: "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX-w",
-                authDomain: "ebook-generator-11e92.firebaseapp.com",
-                projectId: "ebook-generator-11e92",
-                storageBucket: "ebook-generator-11e92.appspot.com",
-                messagingSenderId: "892611289187",
-                appId: "1:892611289187:web:e094185ed5873f409f1856"
-            };
-            
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
-            const functions = getFunctions(app, "us-central1"); 
-            const generateEbookContent = httpsCallable(functions, 'generateEbookContent');
-
-            const TIER_CONFIG = {
-                'coba-coba': { name: 'Coba-coba', quota: 3 }, 'pemula': { name: 'Pemula', quota: 100 },
-                'kreator': { name: 'Kreator', quota: 1000 }, 'tertinggi': { name: 'Tertinggi', quota: 10000 }
-            };
-
-            let currentUserData = null;
-            let ebookQueue = [];
-            let isProcessing = false;
-            let unsubscribeAdminListener = null;
-            let allLicensesCache = [];
-
-            const loadingView = document.getElementById('loading-view');
-            const authView = document.getElementById('auth-view');
-            const authViewContainer = document.querySelector('#auth-view .auth-container');
-            const appView = document.getElementById('app-view');
-            const claimLicenseView = document.getElementById('claim-license-view');
-            const authStatus = document.getElementById('auth-status');
-            const toastNotification = document.getElementById('toast-notification');
-            
-            let isProcessingSignInLink = isSignInWithEmailLink(auth, window.location.href);
-
-            // --- DEKLARASI FUNGSI GLOBAL ---
-            
-            function showView(viewId) {
-                ['loading-view', 'auth-view', 'app-view', 'claim-license-view', 'admin-view'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.classList.add('hidden');
-                });
-                const viewEl = document.getElementById(viewId);
-                if(viewEl) viewEl.classList.remove('hidden');
-            }
-            
-            function renderLoginForm() {
-                if (!authViewContainer) return;
-                authViewContainer.innerHTML = `
-                    <h2 class="app-header" style="margin-bottom: 1rem;">Masuk atau Daftar</h2>
-                    <p style="text-align:center; color: var(--subtle-text); margin-bottom: 1.5rem;">Masukkan email Anda. Kami akan mengirimkan tautan masuk yang aman, tidak perlu kata sandi.</p>
-                    <form id="login-form" class="auth-form">
-                        <input type="email" id="login-email" placeholder="contoh@email.com" required>
-                        <button type="submit" id="login-btn" class="btn" style="background-color: var(--primary-color);">Kirim Tautan Masuk</button>
-                    </form>
-                    <a href="https://wa.link/96qgxr" target="_blank" class="btn" style="background-color: var(--green-color); margin-top: 0.5rem;">Daftar / Beli Lisensi</a>
-                    <p id="auth-error-msg" style="color: var(--red-color); text-align: center; margin-top: 1rem; min-height: 1.25rem;"></p>
-                `;
-                const loginForm = document.getElementById('login-form');
-                if (loginForm) loginForm.addEventListener('submit', handleLoginRequest);
-            }
-
-            async function handleLoginRequest(e) {
-                e.preventDefault();
-                const loginEmailInput = document.getElementById('login-email');
-                const loginBtn = document.getElementById('login-btn');
-                const email = loginEmailInput.value;
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Mengirim...';
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                // --- KONFIGURASI DAN INISIALISASI ---
+                const firebaseConfig = {
+                    apiKey: "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX-w",
+                    authDomain: "ebook-generator-11e92.firebaseapp.com",
+                    projectId: "ebook-generator-11e92",
+                    storageBucket: "ebook-generator-11e92.appspot.com",
+                    messagingSenderId: "892611289187",
+                    appId: "1:892611289187:web:e094185ed5873f409f1856"
+                };
                 
-                try {
-                    // PERBAIKAN: Menggunakan URL yang bersih dan lengkap
-                    const actionCodeSettings = {
-                        url: window.location.href,
-                        handleCodeInApp: true
-                    };
-                    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-                    window.localStorage.setItem('emailForSignIn', email);
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+                const functions = getFunctions(app, "us-central1"); 
+                const generateEbookContent = httpsCallable(functions, 'generateEbookContent');
+
+                const TIER_CONFIG = {
+                    'coba-coba': { name: 'Coba-coba', quota: 3 }, 'pemula': { name: 'Pemula', quota: 100 },
+                    'kreator': { name: 'Kreator', quota: 1000 }, 'tertinggi': { name: 'Tertinggi', quota: 10000 }
+                };
+
+                // --- STATE APLIKASI ---
+                let currentUserData = null;
+                let ebookQueue = [];
+                let isProcessing = false;
+                let unsubscribeAdminListener = null;
+                let allLicensesCache = [];
+                let isProcessingSignInLink = isSignInWithEmailLink(auth, window.location.href);
+
+                // --- REFERENSI DOM ---
+                const loadingView = document.getElementById('loading-view');
+                const authViewContainer = document.querySelector('#auth-view .auth-container');
+                const authStatus = document.getElementById('auth-status');
+                
+                // --- DEKLARASI FUNGSI ---
+                
+                function showView(viewId) {
+                    ['loading-view', 'auth-view', 'app-view', 'claim-license-view', 'admin-view'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.classList.add('hidden');
+                    });
+                    const viewEl = document.getElementById(viewId);
+                    if(viewEl) viewEl.classList.remove('hidden');
+                }
+                
+                function renderLoginForm() {
+                    if (!authViewContainer) return;
                     authViewContainer.innerHTML = `
-                        <div class="app-header" style="text-align: center;">
-                            <i data-lucide="mail-check" style="color: var(--green-color); width: 48px; height: 48px; margin-bottom: 1rem; display: inline-block;"></i>
-                            <h1>Tautan Terkirim!</h1>
-                        </div>
-                        <p style="text-align:center; color: var(--subtle-text);">Kami telah mengirimkan tautan masuk ke:</p>
-                        <p style="text-align:center; font-weight: 600; margin-bottom: 1.5rem; word-break: break-all;">${email}</p>
-                        <p style="text-align:center; color: var(--subtle-text);">Silakan periksa kotak masuk (dan folder spam) Anda untuk melanjutkan.</p>
+                        <h2 class="app-header" style="margin-bottom: 1rem;">Masuk atau Daftar</h2>
+                        <p style="text-align:center; color: var(--subtle-text); margin-bottom: 1.5rem;">Masukkan email Anda. Kami akan mengirimkan tautan masuk yang aman, tidak perlu kata sandi.</p>
+                        <form id="login-form" class="auth-form">
+                            <input type="email" id="login-email" placeholder="contoh@email.com" required>
+                            <button type="submit" id="login-btn" class="btn" style="background-color: var(--primary-color);">Kirim Tautan Masuk</button>
+                        </form>
+                        <a href="https://wa.link/96qgxr" target="_blank" class="btn" style="background-color: var(--green-color); margin-top: 0.5rem;">Daftar / Beli Lisensi</a>
+                        <p id="auth-error-msg" style="color: var(--red-color); text-align: center; margin-top: 1rem; min-height: 1.25rem;"></p>
                     `;
-                    lucide.createIcons();
-                } catch (error) {
-                    const errorMsgEl = document.getElementById('auth-error-msg');
-                    if (errorMsgEl) errorMsgEl.textContent = `Gagal mengirim tautan: ${error.message}`;
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Kirim Tautan Masuk';
+                    document.getElementById('login-form').addEventListener('submit', handleLoginRequest);
                 }
-            }
 
-            async function fetchUserDataByEmail(email) {
-                const q = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
-                const querySnapshot = await getDocs(q);
-                if (querySnapshot.empty) return null;
-                const docSnap = querySnapshot.docs[0];
-                return { id: docSnap.id, ...docSnap.data() };
-            }
-            
-            async function initializeAppForUser(user) {
-                isProcessingSignInLink = false;
-                authStatus.textContent = `Autentikasi berhasil. Memeriksa lisensi...`;
-                
-                const userData = await fetchUserDataByEmail(user.email);
-                
-                if (userData) {
-                    const now = new Date();
-                    const resetDate = userData.quotaResetDate?.toDate();
-                    if (!resetDate || now >= resetDate) {
-                        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-                        await updateDoc(doc(db, "licenses", userData.id), { quotaUsed: 0, quotaResetDate: nextMonth });
-                        userData.quotaUsed = 0;
-                    }
-                    currentUserData = userData;
-                    setupUI(currentUserData);
-                    showView('app-view');
-                } else {
-                    showView('claim-license-view');
-                }
-            }
-            
-            function setupUI(userData) {
-                const activeUserEmail = document.getElementById('active-user-email');
-                const activeUserTier = document.getElementById('active-user-tier');
-                const activeUserQuota = document.getElementById('active-user-quota');
-                const generatorUi = document.getElementById('generator-ui');
-                const quotaLimitView = document.getElementById('quota-limit-view');
-                const adminAreaBtn = document.getElementById('admin-area-btn');
-
-                const tierInfo = TIER_CONFIG[userData.tier] || { name: 'Unknown', quota: 0 };
-                const remainingQuota = tierInfo.quota - (userData.quotaUsed || 0);
-
-                activeUserEmail.textContent = userData.claimedByEmail;
-                activeUserTier.textContent = tierInfo.name;
-                activeUserQuota.textContent = remainingQuota;
-
-                const hasQuota = remainingQuota > 0;
-                generatorUi.classList.toggle('hidden', !hasQuota);
-                quotaLimitView.classList.toggle('hidden', hasQuota);
-                
-                if (userData.claimedByEmail === 'poopandastore@gmail.com') {
-                    adminAreaBtn.classList.remove('hidden');
-                } else {
-                    adminAreaBtn.classList.add('hidden');
-                }
-                renderQueueTable();
-            }
-            
-            async function handleSignInLink() {
-                let email = window.localStorage.getItem('emailForSignIn');
-                if (!email) { email = window.prompt('Untuk keamanan, silakan masukkan kembali email Anda.'); }
-                if (!email) {
-                    isProcessingSignInLink = false;
-                    renderLoginForm();
-                    showView('auth-view');
-                    return;
-                }
-                try {
-                    authStatus.textContent = 'Mengonfirmasi tautan masuk...';
-                    await signInWithEmailLink(auth, email, window.location.href);
-                    window.localStorage.removeItem('emailForSignIn');
-                    window.history.replaceState(null, '', window.location.pathname);
-                } catch (error) {
-                    isProcessingSignInLink = false;
-                    renderLoginForm();
-                    showView('auth-view');
-                    const errorMsgEl = document.getElementById('auth-error-msg');
-                    if(errorMsgEl) errorMsgEl.textContent = 'Gagal masuk: Tautan tidak valid atau sudah kedaluwarsa.';
-                }
-            }
-
-            async function callGenerateApi(prompt) { 
-                try {
-                    const user = auth.currentUser;
-                    if (!user) { throw new Error("Sesi tidak valid. Silakan logout dan login kembali."); }
-                    await user.getIdToken(true); 
-                    const result = await generateEbookContent({ prompt });
-                    return result.data;
-                } catch (error) {
-                    console.error("Error memanggil Cloud Function:", error);
-                    if (error.code === 'unauthenticated' || (error.details && error.details.code === 'unauthenticated')) {
-                         throw new Error(`Sesi Anda tidak valid. Silakan logout dan login kembali.`);
-                    }
-                    throw new Error(`Gagal menghubungi server: ${error.message}`);
-                }
-            }
-
-            function addTopicToQueue() {
-                const topicInput = document.getElementById('topic');
-                const styleSelect = document.getElementById('style');
-                const personaSelect = document.getElementById('persona');
-                const topic = topicInput.value.trim();
-                if (!topic) {
-                    showToast('Topik tidak boleh kosong.', 'error');
-                    return;
-                }
-                ebookQueue.push({ id: Date.now(), topic, style: styleSelect.value, persona: personaSelect.value, status: 'Menunggu', htmlContent: null });
-                topicInput.value = '';
-                renderQueueTable();
-            }
-
-            function renderQueueTable() {
-                const queueTableBody = document.getElementById('queue-table-body');
-                const processQueueBtn = document.getElementById('process-queue-btn');
-                processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
-                queueTableBody.innerHTML = ebookQueue.map(item => `
-                    <tr>
-                        <td>${item.topic}</td>
-                        <td>${item.style}</td>
-                        <td>${item.persona}</td>
-                        <td>${item.status}</td>
-                        <td>
-                            ${item.status === 'Selesai' ? `<button class="btn view-result-btn" data-id="${item.id}" style="font-size: 0.8rem; padding: 4px 8px; background-color: var(--green-color);">Lihat</button>` : ''}
-                            ${item.status.includes('Gagal') ? `<button class="btn view-result-btn" data-id="${item.id}" style="font-size: 0.8rem; padding: 4px 8px; background-color: var(--red-color);">Error</button>` : ''}
-                        </td>
-                    </tr>`).join('');
-                document.querySelectorAll('.view-result-btn').forEach(btn => {
-                    btn.onclick = (e) => {
-                        const item = ebookQueue.find(q => q.id === parseInt(e.currentTarget.dataset.id));
-                        if (item) showEbookInModal(item);
-                    };
-                });
-            }
-
-            async function processQueue() { 
-                const processQueueBtn = document.getElementById('process-queue-btn');
-                isProcessing = true;
-                processQueueBtn.disabled = true;
-                
-                for (const item of ebookQueue) {
-                    if (item.status === 'Menunggu') {
-                        try {
-                            const remainingQuota = (TIER_CONFIG[currentUserData.tier]?.quota || 0) - currentUserData.quotaUsed;
-                            if(remainingQuota <= 0) {
-                                showToast('Kuota Anda habis.', 'error');
-                                throw new Error("Kuota habis");
-                            }
-                            updateItemStatus(item.id, 'Membuat kerangka...');
-                            const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${item.topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n...`;
-                            const outlineResult = await callGenerateApi(promptOutline);
-                            const { title, chapters } = parseOutline(outlineResult.text);
-                            let ebookData = [];
-                            for (let i = 0; i < chapters.length; i++) {
-                                updateItemStatus(item.id, `Menulis Bab ${i + 1}/${chapters.length}...`);
-                                const contentPrompt = `Anda adalah seorang penulis dengan persona sebagai ${item.persona}. Tulis konten untuk bab buku berjudul "${chapters[i]}" dari ebook bertopik "${item.topic}". Gunakan gaya bahasa ${item.style}. Panjang sekitar 400-500 kata.`;
-                                const contentResult = await callGenerateApi(contentPrompt);
-                                ebookData.push({ title: chapters[i], content: contentResult.text });
-                            }
-                            item.htmlContent = renderEbookToHtml(title, ebookData);
-                            await updateDoc(doc(db, "licenses", currentUserData.id), { quotaUsed: increment(1) });
-                            currentUserData.quotaUsed++;
-                            updateItemStatus(item.id, 'Selesai');
-                            setupUI(currentUserData);
-                        } catch (error) {
-                            console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
-                            item.htmlContent = generateFallbackEbook(item.topic, error.message);
-                            updateItemStatus(item.id, `Gagal`);
-                        }
-                    }
-                }
-                isProcessing = false;
-                processQueueBtn.disabled = ebookQueue.length === 0;
-                showToast(`Proses antrean selesai!`, 'success');
-            }
-            
-            function updateItemStatus(id, status) {
-                const item = ebookQueue.find(q => q.id === id);
-                if (item) item.status = status;
-                renderQueueTable();
-            }
-
-            function parseOutline(text) { 
-                if (!text || typeof text !== 'string') throw new Error("Respons AI tidak valid.");
-                const lines = text.split('\n').filter(line => line.trim() !== '');
-                let title = "Judul Ebook";
-                const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
-                if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
-                const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
-                if (chapters.length === 0) throw new Error("Gagal membuat outline bab dari respons AI.");
-                return { title, chapters };
-            }
-            
-            function renderEbookToHtml(title, ebookData) { 
-                let html = `<h1 class="ebook-title">${title}</h1>`;
-                ebookData.forEach((chapter, index) => {
-                    html += `<div class="ebook-chapter"><h2>Bab ${index + 1}: ${chapter.title}</h2><p>${chapter.content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p></div>`;
-                });
-                return html;
-            }
-            
-            function generateFallbackEbook(topic, errorMessage) { return `<h1>Gagal Membuat Ebook: ${topic}</h1><p><b>Detail Kesalahan:</b> ${errorMessage}</p>`; }
-
-            function showEbookInModal(item) { /* ... fungsi tetap sama ... */ }
-            function showToast(message, type = 'success') {
-                const toast = document.getElementById('toast-notification');
-                toast.textContent = message;
-                toast.className = 'show ' + type;
-                setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
-             }
-
-            function attachEventListeners() {
-                document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
-                document.getElementById('logout-btn-claim').addEventListener('click', () => signOut(auth));
-                document.getElementById('add-to-queue-btn').addEventListener('click', addTopicToQueue);
-                document.getElementById('process-queue-btn').addEventListener('click', processQueue);
-                document.getElementById('claim-license-form').addEventListener('submit', async (e) => {
+                async function handleLoginRequest(e) {
                     e.preventDefault();
-                    const keyInput = document.getElementById('license-key-input');
-                    const key = keyInput.value.trim();
-                    const user = auth.currentUser;
-                    if (!key || !user) return;
-                    const licenseRef = doc(db, "licenses", key);
-                    const licenseSnap = await getDoc(licenseRef);
-                    if (!licenseSnap.exists() || licenseSnap.data().claimedByEmail) {
-                        showToast('Kunci lisensi tidak valid atau sudah digunakan.', 'error');
+                    const loginEmailInput = document.getElementById('login-email');
+                    const loginBtn = document.getElementById('login-btn');
+                    const email = loginEmailInput.value;
+                    loginBtn.disabled = true;
+                    loginBtn.textContent = 'Mengirim...';
+                    
+                    try {
+                        const actionCodeSettings = {
+                            url: window.location.href,
+                            handleCodeInApp: true
+                        };
+                        await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+                        window.localStorage.setItem('emailForSignIn', email);
+                        authViewContainer.innerHTML = `
+                            <div class="app-header" style="text-align: center;">
+                                <i data-lucide="mail-check" style="color: var(--green-color); width: 48px; height: 48px; margin-bottom: 1rem; display: inline-block;"></i>
+                                <h1>Tautan Terkirim!</h1>
+                            </div>
+                            <p style="text-align:center; color: var(--subtle-text);">Kami telah mengirimkan tautan masuk ke:</p>
+                            <p style="text-align:center; font-weight: 600; margin-bottom: 1.5rem; word-break: break-all;">${email}</p>
+                            <p style="text-align:center; color: var(--subtle-text);">Silakan periksa kotak masuk (dan folder spam) Anda untuk melanjutkan.</p>
+                        `;
+                        lucide.createIcons();
+                    } catch (error) {
+                        const errorMsgEl = document.getElementById('auth-error-msg');
+                        if (errorMsgEl) errorMsgEl.textContent = `Gagal mengirim tautan: ${error.message}`;
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Kirim Tautan Masuk';
+                    }
+                }
+
+                async function fetchUserDataByEmail(email) {
+                    const q = query(collection(db, "licenses"), where("claimedByEmail", "==", email));
+                    const querySnapshot = await getDocs(q);
+                    if (querySnapshot.empty) return null;
+                    const docSnap = querySnapshot.docs[0];
+                    return { id: docSnap.id, ...docSnap.data() };
+                }
+                
+                async function initializeAppForUser(user) {
+                    isProcessingSignInLink = false;
+                    authStatus.textContent = `Autentikasi berhasil. Memeriksa lisensi...`;
+                    
+                    const userData = await fetchUserDataByEmail(user.email);
+                    
+                    if (userData) {
+                        const now = new Date();
+                        const resetDate = userData.quotaResetDate?.toDate();
+                        if (!resetDate || now >= resetDate) {
+                            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                            await updateDoc(doc(db, "licenses", userData.id), { quotaUsed: 0, quotaResetDate: nextMonth });
+                            userData.quotaUsed = 0;
+                        }
+                        currentUserData = userData;
+                        setupUI(currentUserData);
+                        showView('app-view');
+                    } else {
+                        showView('claim-license-view');
+                    }
+                }
+                
+                function setupUI(userData) {
+                    document.getElementById('active-user-email').textContent = userData.claimedByEmail;
+                    const tierInfo = TIER_CONFIG[userData.tier] || { name: 'Unknown', quota: 0 };
+                    document.getElementById('active-user-tier').textContent = tierInfo.name;
+                    const remainingQuota = tierInfo.quota - (userData.quotaUsed || 0);
+                    document.getElementById('active-user-quota').textContent = remainingQuota;
+                    
+                    document.getElementById('generator-ui').classList.toggle('hidden', remainingQuota <= 0);
+                    document.getElementById('quota-limit-view').classList.toggle('hidden', remainingQuota > 0);
+                    
+                    const adminAreaBtn = document.getElementById('admin-area-btn');
+                    if (userData.claimedByEmail === 'poopandastore@gmail.com') {
+                        adminAreaBtn.classList.remove('hidden');
+                    } else {
+                        adminAreaBtn.classList.add('hidden');
+                    }
+                    renderQueueTable();
+                }
+                
+                async function handleSignInLink() {
+                    let email = window.localStorage.getItem('emailForSignIn');
+                    if (!email) { email = window.prompt('Untuk keamanan, silakan masukkan kembali email Anda.'); }
+                    if (!email) {
+                        isProcessingSignInLink = false;
+                        renderLoginForm();
+                        showView('auth-view');
                         return;
                     }
                     try {
-                        await updateDoc(licenseRef, { claimedByEmail: user.email, claimedAt: serverTimestamp() });
-                        showToast('Lisensi berhasil diklaim! Memuat ulang...', 'success');
-                        setTimeout(() => window.location.reload(), 2000);
+                        authStatus.textContent = 'Mengonfirmasi tautan masuk...';
+                        await signInWithEmailLink(auth, email, window.location.href);
+                        window.localStorage.removeItem('emailForSignIn');
+                        window.history.replaceState(null, '', window.location.pathname);
                     } catch (error) {
-                        showToast(`Gagal mengklaim lisensi: ${error.message}`, 'error');
+                        isProcessingSignInLink = false;
+                        renderLoginForm();
+                        showView('auth-view');
+                        const errorMsgEl = document.getElementById('auth-error-msg');
+                        if(errorMsgEl) errorMsgEl.textContent = 'Gagal masuk: Tautan tidak valid atau sudah kedaluwarsa.';
                     }
-                });
+                }
 
-                // Admin Listeners
-                const adminAreaBtn = document.getElementById('admin-area-btn');
-                const backToAppBtn = document.getElementById('back-to-app-btn');
-                const createLicenseForm = document.getElementById('create-license-form');
-                const adminSearchInput = document.getElementById('admin-search-input');
-                const adminFilterSelect = document.getElementById('admin-filter-select');
-
-                adminAreaBtn.addEventListener('click', () => { showView('admin-view'); loadAdminData(); });
-                backToAppBtn.addEventListener('click', () => { showView('app-view'); if (unsubscribeAdminListener) unsubscribeAdminListener(); });
-                createLicenseForm.addEventListener('submit', async (e) => {
-                     e.preventDefault();
-                    const newLicenseKeyInput = document.getElementById('new-license-key');
-                    const newLicenseTierSelect = document.getElementById('new-license-tier');
-                    const newKey = newLicenseKeyInput.value.trim();
-                    if (!newKey) return;
+                async function callGenerateApi(prompt) { 
                     try {
-                        await setDoc(doc(db, "licenses", newKey), {
-                            tier: newLicenseTierSelect.value, claimedByEmail: null, claimedAt: null,
-                            quotaUsed: 0, quotaResetDate: null
-                        });
-                        showToast(`Lisensi "${newKey}" berhasil dibuat.`, 'success');
-                        newLicenseKeyInput.value = '';
-                    } catch (error) { showToast(`Error: ${error.message}`, 'error'); }
-                });
-                adminSearchInput.addEventListener('input', filterAndRenderAdminTable);
-                adminFilterSelect.addEventListener('change', filterAndRenderAdminTable);
-                
-                document.querySelector('.close-button').addEventListener('click', () => document.getElementById('app-modal').style.display = 'none');
-                window.addEventListener('click', (event) => { if (event.target == document.getElementById('app-modal')) document.getElementById('app-modal').style.display = 'none'; });
-            }
-
-            function loadAdminData() { /* ... fungsi admin tetap sama ... */ }
-            function filterAndRenderAdminTable() { /* ... fungsi admin tetap sama ... */ }
-            function renderAdminTable(licenses) { /* ... fungsi admin tetap sama ... */ }
-            function handleEditLicense(e) { /* ... fungsi admin tetap sama ... */ }
-            function handleDeleteLicense(e) { /* ... fungsi admin tetap sama ... */ }
-
-            // --- INTI APLIKASI ---
-            async function main() {
-                showView('loading-view');
-                authStatus.textContent = 'Memeriksa status login...';
-                
-                attachEventListeners();
-                
-                onAuthStateChanged(auth, user => {
-                    if (user) {
-                        if (!currentUserData || currentUserData.claimedByEmail !== user.email) {
-                            initializeAppForUser(user);
+                        const user = auth.currentUser;
+                        if (!user) { throw new Error("Sesi tidak valid. Silakan logout dan login kembali."); }
+                        await user.getIdToken(true); 
+                        const result = await generateEbookContent({ prompt });
+                        return result.data;
+                    } catch (error) {
+                        console.error("Error memanggil Cloud Function:", error);
+                        if (error.code === 'unauthenticated' || (error.details && error.details.code === 'unauthenticated')) {
+                             throw new Error(`Sesi Anda tidak valid. Silakan logout dan login kembali.`);
                         }
-                    } else {
-                        if (isProcessingSignInLink) {
-                            handleSignInLink();
-                        } else {
-                            currentUserData = null;
-                            renderLoginForm();
-                            showView('auth-view');
+                        throw new Error(`Gagal menghubungi server: ${error.message}`);
+                    }
+                }
+
+                function addTopicToQueue() {
+                    const topicInput = document.getElementById('topic');
+                    const topic = topicInput.value.trim();
+                    if (!topic) {
+                        showToast('Topik tidak boleh kosong.', 'error');
+                        return;
+                    }
+                    ebookQueue.push({ id: Date.now(), topic, style: document.getElementById('style').value, persona: document.getElementById('persona').value, status: 'Menunggu', htmlContent: null });
+                    topicInput.value = '';
+                    renderQueueTable();
+                }
+
+                function renderQueueTable() {
+                    const queueTableBody = document.getElementById('queue-table-body');
+                    const processQueueBtn = document.getElementById('process-queue-btn');
+                    processQueueBtn.disabled = isProcessing || ebookQueue.length === 0;
+                    queueTableBody.innerHTML = ebookQueue.map(item => `
+                        <tr>
+                            <td>${item.topic}</td><td>${item.style}</td><td>${item.persona}</td><td>${item.status}</td>
+                            <td>
+                                ${item.status === 'Selesai' ? `<button class="btn view-result-btn" data-id="${item.id}" style="font-size: 0.8rem; padding: 4px 8px; background-color: var(--green-color);">Lihat</button>` : ''}
+                                ${item.status.includes('Gagal') ? `<button class="btn view-result-btn" data-id="${item.id}" style="font-size: 0.8rem; padding: 4px 8px; background-color: var(--red-color);">Error</button>` : ''}
+                            </td>
+                        </tr>`).join('');
+                    document.querySelectorAll('.view-result-btn').forEach(btn => {
+                        btn.onclick = (e) => {
+                            const item = ebookQueue.find(q => q.id === parseInt(e.currentTarget.dataset.id));
+                            if (item) showEbookInModal(item);
+                        };
+                    });
+                }
+
+                async function processQueue() { 
+                    const processQueueBtn = document.getElementById('process-queue-btn');
+                    isProcessing = true;
+                    processQueueBtn.disabled = true;
+                    
+                    for (const item of ebookQueue) {
+                        if (item.status === 'Menunggu') {
+                            try {
+                                const remainingQuota = (TIER_CONFIG[currentUserData.tier]?.quota || 0) - currentUserData.quotaUsed;
+                                if(remainingQuota <= 0) {
+                                    showToast('Kuota Anda habis.', 'error');
+                                    throw new Error("Kuota habis");
+                                }
+                                updateItemStatus(item.id, 'Membuat kerangka...');
+                                const promptOutline = `Buatkan outline TEKS SAJA untuk ebook dengan topik "${item.topic}". Beri judul yang menarik. Buat 5 bab. Format jawaban harus seperti ini, tanpa teks lain:\n**Judul:** [Judul Ebook Di Sini]\n**Bab 1:** [Judul Bab 1]\n...`;
+                                const outlineResult = await callGenerateApi(promptOutline);
+                                const { title, chapters } = parseOutline(outlineResult.text);
+                                let ebookData = [];
+                                for (let i = 0; i < chapters.length; i++) {
+                                    updateItemStatus(item.id, `Menulis Bab ${i + 1}/${chapters.length}...`);
+                                    const contentPrompt = `Anda adalah seorang penulis dengan persona sebagai ${item.persona}. Tulis konten untuk bab buku berjudul "${chapters[i]}" dari ebook bertopik "${item.topic}". Gunakan gaya bahasa ${item.style}. Panjang sekitar 400-500 kata.`;
+                                    const contentResult = await callGenerateApi(contentPrompt);
+                                    ebookData.push({ title: chapters[i], content: contentResult.text });
+                                }
+                                item.htmlContent = renderEbookToHtml(title, ebookData);
+                                await updateDoc(doc(db, "licenses", currentUserData.id), { quotaUsed: increment(1) });
+                                currentUserData.quotaUsed++;
+                                updateItemStatus(item.id, 'Selesai');
+                                setupUI(currentUserData);
+                            } catch (error) {
+                                console.error(`Gagal membuat ebook untuk "${item.topic}":`, error);
+                                item.htmlContent = generateFallbackEbook(item.topic, error.message);
+                                updateItemStatus(item.id, `Gagal`);
+                            }
                         }
                     }
-                });
+                    isProcessing = false;
+                    processQueueBtn.disabled = ebookQueue.length === 0;
+                    showToast(`Proses antrean selesai!`, 'success');
+                }
                 
-                lucide.createIcons();
-            }
-            
-            main();
+                function updateItemStatus(id, status) {
+                    const item = ebookQueue.find(q => q.id === id);
+                    if (item) item.status = status;
+                    renderQueueTable();
+                }
 
-        } catch (e) {
-            console.error("Aplikasi gagal diinisialisasi:", e);
-            document.body.innerHTML = `<div class="auth-container"><h2 class="app-header" style="color:var(--red-color)">Error Kritis</h2><p style="text-align:center;">Aplikasi tidak dapat dimuat. ${e.message}</p></div>`;
-        }
+                function parseOutline(text) { 
+                    if (!text || typeof text !== 'string') throw new Error("Respons AI tidak valid.");
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    let title = "Judul Ebook";
+                    const titleLine = lines.find(line => line.match(/\*\*?Judul\*\*?:\s*/i));
+                    if (titleLine) title = titleLine.replace(/\*\*?Judul\*\*?:\s*/i, '').trim();
+                    const chapters = lines.filter(line => line.match(/\*\*?Bab\s*\d*:/i)).map(line => line.replace(/\*\*?Bab\s*\d*:\s*/i, '').trim());
+                    if (chapters.length === 0) throw new Error("Gagal membuat outline bab dari respons AI.");
+                    return { title, chapters };
+                }
+                
+                function renderEbookToHtml(title, ebookData) { 
+                    let html = `<h1 class="ebook-title">${title}</h1>`;
+                    ebookData.forEach((chapter, index) => {
+                        html += `<div class="ebook-chapter"><h2>Bab ${index + 1}: ${chapter.title}</h2><p>${chapter.content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p></div>`;
+                    });
+                    return html;
+                }
+                
+                function generateFallbackEbook(topic, errorMessage) { return `<h1>Gagal Membuat Ebook: ${topic}</h1><p><b>Detail Kesalahan:</b> ${errorMessage}</p>`; }
+
+                function showEbookInModal(item) {
+                    const modalTitle = document.getElementById('modal-title');
+                    const modalBody = document.getElementById('modal-body');
+                    const modalFooter = document.getElementById('modal-footer');
+                    const appModal = document.getElementById('app-modal');
+
+                    modalTitle.textContent = item.status.includes('Gagal') ? "Detail Kegagalan" : `Ebook: ${item.topic}`;
+                    modalBody.innerHTML = `<div id="modal-ebook-content">${item.htmlContent}</div>`;
+                    modalFooter.innerHTML = `<button id="modal-save-docx-btn" class="btn" style="background-color: var(--orange-color);"><i data-lucide="file-text"></i><span>Simpan .docx</span></button><button id="modal-save-pdf-btn" class="btn" style="background-color: var(--green-color);"><i data-lucide="download"></i><span>Simpan PDF</span></button>`;
+                    lucide.createIcons();
+                    document.getElementById('modal-save-pdf-btn').onclick = () => { html2pdf().from(document.getElementById('modal-ebook-content')).save(`${item.topic}.pdf`); };
+                    document.getElementById('modal-save-docx-btn').onclick = () => { saveAs(htmlDocx.asBlob(`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${item.htmlContent}</body></html>`), `${item.topic}.docx`); };
+                    appModal.style.display = 'flex';
+                }
+
+                function showToast(message, type = 'success') {
+                    const toast = document.getElementById('toast-notification');
+                    toast.textContent = message;
+                    toast.className = 'show ' + type;
+                    setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+                 }
+
+                function attachEventListeners() {
+                    document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+                    document.getElementById('logout-btn-claim').addEventListener('click', () => signOut(auth));
+                    document.getElementById('add-to-queue-btn').addEventListener('click', addTopicToQueue);
+                    document.getElementById('process-queue-btn').addEventListener('click', processQueue);
+                    document.getElementById('claim-license-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const keyInput = document.getElementById('license-key-input');
+                        const key = keyInput.value.trim();
+                        const user = auth.currentUser;
+                        if (!key || !user) return;
+                        const licenseRef = doc(db, "licenses", key);
+                        const licenseSnap = await getDoc(licenseRef);
+                        if (!licenseSnap.exists() || licenseSnap.data().claimedByEmail) {
+                            showToast('Kunci lisensi tidak valid atau sudah digunakan.', 'error');
+                            return;
+                        }
+                        try {
+                            await updateDoc(licenseRef, { claimedByEmail: user.email, claimedAt: serverTimestamp() });
+                            showToast('Lisensi berhasil diklaim! Memuat ulang...', 'success');
+                            setTimeout(() => window.location.reload(), 2000);
+                        } catch (error) {
+                            showToast(`Gagal mengklaim lisensi: ${error.message}`, 'error');
+                        }
+                    });
+
+                    // Admin Listeners
+                    document.getElementById('admin-area-btn').addEventListener('click', () => { showView('admin-view'); loadAdminData(); });
+                    document.getElementById('back-to-app-btn').addEventListener('click', () => { showView('app-view'); if (unsubscribeAdminListener) unsubscribeAdminListener(); });
+                    document.getElementById('create-license-form').addEventListener('submit', async (e) => {
+                         e.preventDefault();
+                        const newLicenseKeyInput = document.getElementById('new-license-key');
+                        const newLicenseTierSelect = document.getElementById('new-license-tier');
+                        const newKey = newLicenseKeyInput.value.trim();
+                        if (!newKey) return;
+                        try {
+                            await setDoc(doc(db, "licenses", newKey), {
+                                tier: newLicenseTierSelect.value, claimedByEmail: null, claimedAt: null,
+                                quotaUsed: 0, quotaResetDate: null
+                            });
+                            showToast(`Lisensi "${newKey}" berhasil dibuat.`, 'success');
+                            newLicenseKeyInput.value = '';
+                        } catch (error) { showToast(`Error: ${error.message}`, 'error'); }
+                    });
+                    document.getElementById('admin-search-input').addEventListener('input', filterAndRenderAdminTable);
+                    document.getElementById('admin-filter-select').addEventListener('change', filterAndRenderAdminTable);
+                    
+                    document.querySelector('.close-button').addEventListener('click', () => document.getElementById('app-modal').style.display = 'none');
+                    window.addEventListener('click', (event) => { if (event.target == document.getElementById('app-modal')) document.getElementById('app-modal').style.display = 'none'; });
+                }
+
+                function loadAdminData() {
+                    const q = query(collection(db, "licenses"));
+                    unsubscribeAdminListener = onSnapshot(q, (querySnapshot) => {
+                        allLicensesCache = [];
+                        querySnapshot.forEach((doc) => { allLicensesCache.push({ id: doc.id, ...doc.data() }); });
+                        filterAndRenderAdminTable();
+                    });
+                }
+                function filterAndRenderAdminTable() {
+                    const searchTerm = document.getElementById('admin-search-input').value.toLowerCase();
+                    const filterType = document.getElementById('admin-filter-select').value;
+                    const filtered = allLicensesCache.filter(lic => {
+                        const matchesSearch = lic.id.toLowerCase().includes(searchTerm) || (lic.claimedByEmail && lic.claimedByEmail.toLowerCase().includes(searchTerm));
+                        const matchesFilter = (filterType === 'all') || (filterType === 'claimed' && lic.claimedByEmail) || (filterType === 'unclaimed' && !lic.claimedByEmail);
+                        return matchesSearch && matchesFilter;
+                    });
+                    renderAdminTable(filtered);
+                }
+                function renderAdminTable(licenses) {
+                    document.getElementById('admin-license-table-body').innerHTML = licenses.map(lic => `
+                        <tr>
+                            <td>${lic.id}</td><td style="text-transform: capitalize;">${lic.tier || 'N/A'}</td>
+                            <td>${lic.claimedByEmail || '-'}</td>
+                            <td>${lic.quotaUsed || 0} / ${TIER_CONFIG[lic.tier]?.quota || '?'}</td>
+                            <td>
+                                <button class="btn edit-license-btn" data-id="${lic.id}" style="font-size:0.8rem;padding:4px 8px;background-color:var(--blue-color)">Edit</button>
+                                <button class="btn delete-license-btn" data-id="${lic.id}" style="font-size:0.8rem;padding:4px 8px;background-color:var(--red-color)">Hapus</button>
+                            </td>
+                        </tr>`).join('');
+                    document.querySelectorAll('.edit-license-btn').forEach(btn => btn.addEventListener('click', handleEditLicense));
+                    document.querySelectorAll('.delete-license-btn').forEach(btn => btn.addEventListener('click', handleDeleteLicense));
+                }
+                function handleEditLicense(e) {
+                    const licenseId = e.target.dataset.id;
+                    const licenseData = allLicensesCache.find(lic => lic.id === licenseId);
+                    if (!licenseData) return;
+                    const tierOptions = Object.keys(TIER_CONFIG).map(key => `<option value="${key}" ${licenseData.tier === key ? 'selected' : ''}>${TIER_CONFIG[key].name}</option>`).join('');
+                    document.getElementById('modal-title').textContent = "Edit Lisensi";
+                    document.getElementById('modal-body').innerHTML = `<form id="edit-license-modal-form" class="auth-form"><label>ID Lisensi: <strong>${licenseId}</strong></label><label>Paket Lisensi</label><select id="edit-license-tier">${tierOptions}</select><label>Email Pengguna (kosongkan untuk membebaskan)</label><input type="email" id="edit-license-email" value="${licenseData.claimedByEmail || ''}" placeholder="Email pengguna baru..."></form>`;
+                    document.getElementById('modal-footer').innerHTML = `<button id="cancel-edit-btn" class="btn" style="background-color: var(--subtle-text)">Batal</button><button id="save-edit-license-btn" class="btn" style="background-color: var(--green-color)">Simpan</button>`;
+                    document.getElementById('app-modal').style.display = 'flex';
+                    document.getElementById('save-edit-license-btn').onclick = async () => {
+                        const newTier = document.getElementById('edit-license-tier').value;
+                        const newEmail = document.getElementById('edit-license-email').value.trim().toLowerCase() || null;
+                        try {
+                            await updateDoc(doc(db, "licenses", licenseId), { tier: newTier, claimedByEmail: newEmail });
+                            showToast('Lisensi berhasil diperbarui.', 'success');
+                            document.getElementById('app-modal').style.display = 'none';
+                        } catch (error) { showToast(`Gagal memperbarui: ${error.message}`, 'error'); }
+                    };
+                    document.getElementById('cancel-edit-btn').onclick = () => document.getElementById('app-modal').style.display = 'none';
+                }
+                function handleDeleteLicense(e) {
+                    const id = e.target.dataset.id;
+                    document.getElementById('modal-title').textContent = "Konfirmasi Hapus";
+                    document.getElementById('modal-body').innerHTML = `<p>Apakah Anda yakin ingin menghapus lisensi <strong>${id}</strong> secara permanen?</p>`;
+                    document.getElementById('modal-footer').innerHTML = `<button id="cancel-delete-btn" class="btn" style="background-color: var(--subtle-text)">Batal</button><button id="confirm-delete-btn" class="btn" style="background-color: var(--red-color)">Ya, Hapus</button>`;
+                    document.getElementById('app-modal').style.display = 'flex';
+                    document.getElementById('confirm-delete-btn').onclick = async () => {
+                        try {
+                            await deleteDoc(doc(db, "licenses", id));
+                            showToast(`Lisensi ${id} berhasil dihapus.`, 'success');
+                            document.getElementById('app-modal').style.display = 'none';
+                        } catch (error) { showToast(`Gagal menghapus: ${error.message}`, 'error'); }
+                    };
+                    document.getElementById('cancel-delete-btn').onclick = () => document.getElementById('app-modal').style.display = 'none';
+                }
+
+                // --- INTI APLIKASI ---
+                async function main() {
+                    showView('loading-view');
+                    authStatus.textContent = 'Memeriksa status login...';
+                    
+                    attachEventListeners();
+                    
+                    onAuthStateChanged(auth, user => {
+                        if (user) {
+                            if (!currentUserData || currentUserData.claimedByEmail !== user.email) {
+                                initializeAppForUser(user);
+                            }
+                        } else {
+                            if (isProcessingSignInLink) {
+                                handleSignInLink();
+                            } else {
+                                currentUserData = null;
+                                renderLoginForm();
+                                showView('auth-view');
+                            }
+                        }
+                    });
+                    
+                    lucide.createIcons();
+                }
+                
+                main();
+
+            } catch (e) {
+                console.error("Aplikasi gagal diinisialisasi:", e);
+                document.body.innerHTML = `<div class="auth-container"><h2 class="app-header" style="color:var(--red-color)">Error Kritis</h2><p style="text-align:center;">Aplikasi tidak dapat dimuat. ${e.message}</p></div>`;
+            }
+        });
     </script>
 </body>
 </html>
