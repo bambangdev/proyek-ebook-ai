@@ -163,7 +163,9 @@
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
-            const functions = getFunctions(app, "asia-southeast1"); 
+            // --- PERBAIKAN DI SINI ---
+            // Mengubah region ke us-central1 agar cocok dengan lokasi deploy default
+            const functions = getFunctions(app, "us-central1"); 
             const generateEbookContent = httpsCallable(functions, 'generateEbookContent');
 
             const TIER_CONFIG = {
@@ -595,7 +597,12 @@
             async function init() {
                 showView('loading-view');
                 authStatus.textContent = 'Memeriksa status login...';
-                if (isProcessingSignInLink) { await handleSignInLink(); }
+                if (isProcessingSignInLink) { 
+                    await handleSignInLink(); 
+                } else {
+                    // Jika tidak sedang memproses link, segera jalankan onAuthStateChanged check
+                    onAuthStateChanged(auth, () => {}); 
+                }
                 // Pasang event listener utama di sini, setelah semua elemen didefinisikan
                 addToQueueBtn.addEventListener('click', addTopicToQueue);
                 processQueueBtn.addEventListener('click', processQueue);
