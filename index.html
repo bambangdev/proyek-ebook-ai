@@ -13,11 +13,6 @@
     <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
-    <!-- Firebase SDK (akan diisi nanti) -->
-    <script type="module" id="firebase-loader">
-        // Kode inisialisasi Firebase akan disuntikkan di sini oleh skrip utama
-    </script>
-
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 1rem; box-sizing: border-box; }
         .app-container, .auth-container { background-color: #fff; max-width: 64rem; margin-left: auto; margin-right: auto; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
@@ -179,14 +174,16 @@
 
     <script type="module">
         // --- FIREBASE INITIALIZATION ---
-        // Anda akan mendapatkan ini dari Firebase Console (Lihat Panduan)
+        // GANTI DENGAN KONFIGURASI FIREBASE ANDA SENDIRI
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyAnxE0CVOQGMyF0AUPtjIi_Utl3Y2vMX-w",
+            authDomain: "ebook-generator-11e92.firebaseapp.com",
+            databaseURL: "https://ebook-generator-11e92-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ebook-generator-11e92",
+            storageBucket: "ebook-generator-11e92.firebasestorage.app",
+            messagingSenderId: "892611289187",
+            appId: "1:892611289187:web:e094185ed5873f409f1856",
+            measurementId: "G-799ZLZNTK4"
         };
         
         // Suntikkan skrip Firebase
@@ -195,7 +192,7 @@
         firebaseScript.innerHTML = `
             import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
             import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-            import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+            import { getFirestore, doc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
             const app = initializeApp(${JSON.stringify(firebaseConfig)});
             window.auth = getAuth(app);
@@ -206,6 +203,8 @@
             window.signOut = signOut;
             window.doc = doc;
             window.setDoc = setDoc;
+            window.getDocs = getDocs;
+            window.collection = collection;
 
             // Panggil event listener setelah Firebase siap
             document.dispatchEvent(new Event('firebase-ready'));
@@ -287,7 +286,6 @@
                     const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
                     const user = userCredential.user;
                     
-                    // Simpan data tambahan ke Firestore
                     await setDoc(doc(window.db, "registeredUsers", user.uid), {
                         name: name,
                         phone: phone,
@@ -320,10 +318,12 @@
                 if (!adminView.classList.contains('hidden')) {
                     adminUserList.innerHTML = '<tr><td colspan="3" style="text-align:center;"><div class="spinner"></div> Memuat data...</td></tr>';
                     try {
-                        const response = await fetch('/api/admin');
-                        if (!response.ok) throw new Error('Gagal mengambil data pengguna.');
-                        const users = await response.json();
-                        
+                        const querySnapshot = await getDocs(collection(window.db, "registeredUsers"));
+                        const users = [];
+                        querySnapshot.forEach((doc) => {
+                            users.push(doc.data());
+                        });
+
                         if(users.length > 0) {
                             adminUserList.innerHTML = users.map(user => `
                                 <tr>
