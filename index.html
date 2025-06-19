@@ -66,7 +66,6 @@
 </head>
 <body>
 
-    <!-- PERBAIKAN: class 'hidden' dihapus dari auth-view agar muncul secara default -->
     <div id="auth-view" class="fade-in">
         <div class="auth-container">
             <div class="auth-tabs">
@@ -90,7 +89,6 @@
         </div>
     </div>
 
-    <!-- Container Aplikasi Utama -->
     <div id="app-view" class="hidden">
         <div id="main-container" class="app-container">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
@@ -237,7 +235,7 @@
 
                 async function callGenerateApi(prompt) { 
                     try {
-                        await auth.currentUser.getIdToken(true);
+                        // PERBAIKAN: Menggunakan sesi anonim yang sudah ada untuk otorisasi
                         const result = await generateEbookContent({ prompt });
                         return result.data;
                     } catch (error) {
@@ -413,8 +411,6 @@
                          showRegisterBtn.classList.add('active');
                     });
 
-
-                    // Admin Listeners
                     document.getElementById('admin-area-btn').addEventListener('click', () => { showView('admin-view'); loadAdminData(); });
                     document.getElementById('back-to-app-btn').addEventListener('click', () => { showView('app-view'); if (unsubscribeAdminListener) unsubscribeAdminListener(); });
                     document.getElementById('create-license-form').addEventListener('submit', async (e) => {
@@ -512,7 +508,6 @@
                     const authStatus = document.getElementById('auth-status');
                     authStatus.textContent = 'Menghubungkan ke server...';
                     
-                    // PERBAIKAN: Selalu sign in secara anonim terlebih dahulu
                     await signInAnonymously(auth);
                     authStatus.textContent = 'Koneksi berhasil.';
 
